@@ -94,7 +94,7 @@ test_that("is_mgcv_smooth returns false for objects that aren't smooths", {
 
 test_that("check_is_mgcv_smooth throws error for objects that aren't smooths", {
     expect_error(check_is_mgcv_smooth(1:10),
-                 "Object passed to 'smooth' is not a 'mgcv.smooth'.",
+                 "'smooth' is not an 'mgcv.smooth'",
                  fixed = TRUE)
 })
 
@@ -376,7 +376,8 @@ test_that("term_variables works for a terms", {
 })
 
 test_that("transform_fun works for parametric_effects", {
-    expect_message(pe <- parametric_effects(m_para_sm),
+    expect_message(pe <- parametric_effects(m_para_sm, data = df_2_fac,
+    envir = teardown_env()),
                    "Interaction terms are not currently supported.")
     expect_silent(pe <- transform_fun(pe, fun = abs))
     expect_true(all(!pe$partial < 0L))
@@ -399,4 +400,14 @@ test_that("transform_fun works for tbl", {
 test_that("involves_ranef_smooth works", {
     sm <- smooths(su_m_trivar_t2)
     expect_false(involves_ranef_smooth(get_smooth(su_m_trivar_t2, sm[1])))
+})
+
+test_that("null_deviance works for a gam", {
+    expect_silent(nd <- null_deviance(m_bam))
+    expect_identical(null_deviance(m_gam), m_gam$null.deviance)
+})
+
+test_that("null_deviance works for a gam", {
+    expect_silent(nd <- null_deviance(m_bam))
+    expect_identical(null_deviance(m_gam), m_bam$null.deviance)
 })

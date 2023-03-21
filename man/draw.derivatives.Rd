@@ -2,9 +2,28 @@
 % Please edit documentation in R/draw-methods.R
 \name{draw.derivatives}
 \alias{draw.derivatives}
+\alias{draw.partial_derivatives}
 \title{Plot derivatives of smooths}
 \usage{
 \method{draw}{derivatives}(
+  object,
+  select = NULL,
+  scales = c("free", "fixed"),
+  add_change = FALSE,
+  change_type = c("change", "sizer"),
+  alpha = 0.2,
+  change_col = "black",
+  decrease_col = "#56B4E9",
+  increase_col = "#E69F00",
+  lwd_change = 1.5,
+  ncol = NULL,
+  nrow = NULL,
+  guides = "keep",
+  angle = NULL,
+  ...
+)
+
+\method{draw}{partial_derivatives}(
   object,
   select = NULL,
   scales = c("free", "fixed"),
@@ -12,6 +31,7 @@
   ncol = NULL,
   nrow = NULL,
   guides = "keep",
+  angle = NULL,
   ...
 )
 }
@@ -27,22 +47,39 @@ as shown for example in the output from \code{summary(object)}. Logical
 stored.}
 
 \item{scales}{character; should all univariate smooths be plotted with the
-same y-axis scale? The default, \code{scales = "fixed"}, ensures this is done.
-If \code{scales = "free"} each univariate smooth has its own y-axis scale.
+same y-axis scale? If \code{scales = "free"}, the default, each univariate
+smooth has its own y-axis scale. If \code{scales = "fixed"}, a common y axis
+scale is used for all univariate smooths.
+
 Currently does not affect the y-axis scale of plots of the parametric
 terms.}
+
+\item{add_change}{logical; should the periods of significant change be
+highlighted on the plot?}
+
+\item{change_type}{character; the type of change to indicate. If \code{"change"},
+no differentiation is made between periods of significant increase or
+decrease. If \code{"sizer"}, the periods of increase and decrease are
+differentiated in the resulting plot.}
 
 \item{alpha}{numeric; alpha transparency for confidence or simultaneous
 interval.}
 
-\item{ncol}{numeric; the numbers of rows and columns over which to
-spread the plots}
+\item{change_col, decrease_col, increase_col}{colour specifications to use for
+indicating periods of change. \code{col_change} is used when
+\code{change_type = "change"}, while \code{col_decrease} and \code{col_increase} are used
+when `change_type = "sizer"``.}
 
-\item{nrow}{numeric; the numbers of rows and columns over which to
+\item{lwd_change}{numeric; the \code{linewidth} to use for the change indicators.}
+
+\item{ncol, nrow}{numeric; the numbers of rows and columns over which to
 spread the plots}
 
 \item{guides}{character; one of \code{"keep"} (the default), \code{"collect"}, or
 \code{"auto"}. Passed to \code{\link[patchwork:plot_layout]{patchwork::plot_layout()}}}
+
+\item{angle}{numeric; the angle at which the x axis tick labels are to be
+drawn passed to the \code{angle} argument of \code{\link[ggplot2:guide_axis]{ggplot2::guide_axis()}}.}
 
 \item{...}{additional arguments passed to \code{\link[patchwork:wrap_plots]{patchwork::wrap_plots()}}.}
 }

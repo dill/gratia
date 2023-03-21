@@ -11,8 +11,8 @@ smooth_estimates(object, ...)
   object,
   smooth = NULL,
   n = 100,
-  n_3d = NULL,
-  n_4d = NULL,
+  n_3d = 16,
+  n_4d = 4,
   data = NULL,
   unconditional = FALSE,
   overall_uncertainty = TRUE,
@@ -76,7 +76,7 @@ other function.
 }
 \examples{
 load_mgcv()
-\dontshow{op <- options(cli.unicode = FALSE, digits = 6)}
+\dontshow{op <- options(cli.unicode = FALSE, pillar.sigfig = 6)}
 dat <- data_sim("eg1", n = 400, dist = "normal", scale = 2, seed = 2)
 m1 <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), data = dat, method = "REML")
 

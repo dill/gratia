@@ -3,13 +3,19 @@
 #' @param object a fitted model object.
 #' @param terms character; which model parametric terms should be drawn? The
 #'   Default of `NULL` will plot all parametric terms that can be drawn.
+#' @param data a optional data frame that may or may not be used? FIXME!
 #' @param unconditional logical; should confidence intervals include the
 #'   uncertainty due to smoothness selection? If `TRUE`, the corrected Bayesian
 #'   covariance matrix will be used.
-#' @param unnest logical; unnest the smooth objects?
+#' @param unnest logical; unnest the parametric effect objects?
 #' @param ci_level numeric; the coverage required for the confidence interval.
 #'   Currently ignored.
 #' @param envir an environment to look up the data within.
+#' @param transform logical; if `TRUE`, the parametric effect will be plotted on
+#'   its transformed scale which will result in the effect being a straight
+#'   line. If FALSE, the effect will be plotted against the raw data (i.e. for
+#'   `log10(x)`, or `poly(z)`, the x-axis of the plot will be `x` or `z`
+#'   respectively.)
 #' @param ... arguments passed to other methods.
 #'
 #' @export
@@ -28,15 +34,20 @@
 #' @rdname parametric_effects
 #' @export
 `parametric_effects.gam` <- function(object, terms = NULL,
-                                     #data = NULL,
+                                     data = NULL,
                                      unconditional = FALSE,
                                      unnest = TRUE,
                                      ci_level = 0.95,
                                      envir = environment(formula(object)),
+                                     transform = FALSE,
                                      ...) {
     tt <- object$pterms       # get model terms object
     tt <- delete.response(tt) # remove response so easier to work with
     vars <- parametric_terms(object) # vector of names of model terms
+    if (length(vars) == 0L) {
+        warning("The model doesn't contain any parametric terms")
+        return(NULL)
+    }
     mgcv_names <- names(vars) # this is how mgcv refers to the terms
 
     # user supplied term? if provided check the stated terms are actually model
@@ -71,18 +82,31 @@
                     unconditional = unconditional)
     # try to recover the data
     mf <- model.frame(object)
-    # if (is.null(data)) {
-        # data <- eval(object$call$data, envir)
-    # }
-    # if (is.null(data)) {
-        # data <- mf
-    # }
+    if (is.null(data)) {
+        data <- eval(object$call$data, envir)
+    }
+    if (is.null(data)) {
+        data <- mf
+    }
 
     # loop over the valid_terms and prepare the parametric effects
-    fun <- function(term, data, pred) {
-        out <- bind_cols(level = data[[term]],
+    fun <- function(term, data, pred, vars) {
+        # if we are handling an lss model, we need to find the right data
+        vars <- vars[term]
+        # term_expr <- str2expression(term)[[1L]]
+        term_expr <- str2expression(vars)[[1L]]
+        x_data <- if (length(term_expr) > 1L) {
+            if (transform) {
+                pred$fit[, term]
+            } else {
+                eval(term_expr[[2L]], data, enclos = envir)
+            }
+        } else {
+            eval(term_expr, data, enclos = envir)
+        }
+        out <- bind_cols(level = x_data,
                          partial = pred[["fit"]][, term],
-                         se = pred[["se.fit"]][, term]) %>%
+                         se = pred[["se.fit"]][, term]) |>
           distinct(.data$level, .keep_all = TRUE)
         nr <- nrow(out)
         is_fac <- is.factor(out$level)
@@ -99,7 +123,8 @@
         out
     }
 
-    effects <- map_df(valid_terms, .f = fun, data = mf, pred = pred)
+    effects <- map_df(valid_terms, .f = fun, data = data, pred = pred,
+        vars = vars)
 
     if (unnest) {
         effects <- unnest(effects, cols = "data") %>%
@@ -141,6 +166,7 @@ draw.parametric_effects <- function(object,
                                     fun = NULL,
                                     rug = TRUE,
                                     position = "identity",
+                                    angle = NULL,
                                     ...,
                                     ncol = NULL, nrow = NULL,
                                     guides = "keep") {
@@ -160,18 +186,19 @@ draw.parametric_effects <- function(object,
     }
 
     plts <- object %>%
-      group_by(.data$term) %>%
-      group_map(.keep = TRUE,
-                .f = ~ draw_parametric_effect(.x,
-                                              ci_level = ci_level,
-                                              ci_col = ci_col,
-                                              ci_alpha = ci_alpha,
-                                              line_col = line_col,
-                                              constant = constant,
-                                              fun = fun,
-                                              rug = rug,
-                                              position = position,
-                                              ylim = ylim))
+        group_by(.data$term) %>%
+        group_map(.keep = TRUE,
+            .f = ~ draw_parametric_effect(.x,
+                ci_level = ci_level,
+                ci_col = ci_col,
+                ci_alpha = ci_alpha,
+                line_col = line_col,
+                constant = constant,
+                fun = fun,
+                rug = rug,
+                position = position,
+                ylim = ylim,
+                angle = angle))
 
     # return
     n_plots <- length(plts)
@@ -215,6 +242,7 @@ draw.parametric_effects <- function(object,
                                      rug = TRUE,
                                      position = "identity",
                                      ylim = NULL,
+                                     angle = NULL,
                                      ...) {
     # plot
     is_fac <- unique(object[["type"]]) == "factor"
@@ -228,27 +256,29 @@ draw.parametric_effects <- function(object,
     if (!all(c("upper", "lower") %in% names(object))) {
         crit <- coverage_normal(ci_level)
         object <- mutate(object,
-                         lower = .data$partial - (crit * .data$se),
-                         upper = .data$partial + (crit * .data$se))
+            lower = .data$partial - (crit * .data$se),
+            upper = .data$partial + (crit * .data$se))
     }
 
     ## If fun supplied, use it to transform est and the upper and lower interval
-    object <- transform_fun(object, fun = fun, column = "partial")
+    object <- transform_fun(object, fun = fun,
+        column = c("partial", "lower", "upper"))
 
     # base plot
-    plt <- ggplot(object, aes(x = .data[[x_val]],
-                              y = .data$partial))
+    plt <- ggplot(object,
+        aes(x = .data[[x_val]], y = .data$partial)) +
+        guides(x = guide_axis(angle = angle))
 
     if (is_fac) {
         plt <- plt + geom_pointrange(aes(ymin = .data$lower,
-                                         ymax = .data$upper))
+            ymax = .data$upper))
     } else {
         if (isTRUE(rug)) {
             plt <- plt + geom_rug(sides = "b", position = position, alpha = 0.5)
         }
         plt <- plt + geom_ribbon(aes(ymin = .data$lower,
-                                     ymax = .data$upper),
-                                 alpha = ci_alpha, fill = ci_col, colour = NA) +
+            ymax = .data$upper),
+        alpha = ci_alpha, fill = ci_col, colour = NA) +
             geom_line(colour = line_col)
     }
 
@@ -262,10 +292,13 @@ draw.parametric_effects <- function(object,
     if (is.null(title)) {
         title <- term_label
     }
+    if (is.null(caption)) {
+        caption <- paste("Parametric term")
+    }
 
     ## add labelling to plot
     plt <- plt + labs(x = xlab, y = ylab, title = title, subtitle = subtitle,
-                      caption = caption)
+        caption = caption)
 
     ## fixing the y axis limits?
     if (!is.null(ylim)) {

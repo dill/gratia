@@ -45,7 +45,7 @@
 #'
 #' @examples
 #' load_mgcv()
-#' \dontshow{op <- options(cli.unicode = FALSE, digits = 6)}
+#' \dontshow{op <- options(cli.unicode = FALSE, pillar.sigfig = 6)}
 #' dat <- data_sim("eg1", n = 400, dist = "normal", scale = 2, seed = 2)
 #' m1 <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), data = dat, method = "REML")
 #'
@@ -67,8 +67,8 @@
 `smooth_estimates.gam` <- function(object,
                                    smooth = NULL,
                                    n = 100,
-                                   n_3d = NULL,
-                                   n_4d = NULL,
+                                   n_3d = 16,
+                                   n_4d = 4,
                                    data = NULL,
                                    unconditional = FALSE,
                                    overall_uncertainty = TRUE,
@@ -103,14 +103,14 @@
         data <- delete_response(object, data = data)
     }
 
-    # fix up the n, n_3d, n_4d. If `n_3d` is `NULL` set `n_3d <- n`
-    if (is.null(n_3d)) {
-        n_3d <- n
-    }
-    # likewise fix up n_4d; set it to `n` if `n_4d` is NULL
-    if (is.null(n_4d)) {
-        n_4d <- n
-    }
+    # # fix up the n, n_3d, n_4d. If `n_3d` is `NULL` set `n_3d <- n`
+    # if (is.null(n_3d)) {
+    #     n_3d <- n
+    # }
+    # # likewise fix up n_4d; set it to `n` if `n_4d` is NULL
+    # if (is.null(n_4d)) {
+    #     n_4d <- n
+    # }
 
     for (i in seq_along(sm_list)) {
         sm_list[[i]] <- eval_smooth(smooths[[i]],
@@ -124,12 +124,18 @@
                                     dist = dist)
     }
 
+    # see if we have any tensor term orders to collect & apply
+    tensor_term_order <- lapply(sm_list, attr, "tensor_term_order")
     ## create a single df of all the smooths
     sm_list <- bind_rows(sm_list)
-    ## need to unnest the `data` column
+
+    ## need to unnest the `data` column?
     if (isTRUE(unnest)) {
         sm_list <- unnest(sm_list, all_of('data'))
     }
+
+    # add back any special attributes
+    attr(sm_list, "tensor_term_order") <- do.call("c", tensor_term_order)
 
     ## add a class
     class(sm_list) <- c("smooth_estimates", class(sm_list))
@@ -150,64 +156,6 @@
         stop("'smooth_estimates()' not available for a generic list")
     }
     smooth_estimates(object[["gam"]], ...)
-}
-
-#' Determine the type of smooth and return it n a human readble form
-#'
-#' @param smooth an object inheriting from class `mgcv.smooth`.
-#'
-#' @keywords internal
-#' @noRd
-`smooth_type` <- function(smooth) {
-    sm_type <- if (inherits(smooth, "tprs.smooth")) {
-        "TPRS"
-    } else if (inherits(smooth, "ts.smooth")) {
-        "TPRS (shrink)"
-    } else if (inherits(smooth, "cr.smooth")) {
-        "CRS"
-    } else if (inherits(smooth, "cs.smooth")) {
-        "CRS (shrink)"
-    } else if (inherits(smooth, "cyclic.smooth")) {
-        "Cyclic CRS"
-    } else if (inherits(smooth, "pspline.smooth")) {
-        "P spline"
-    } else if (inherits(smooth, "cp.smooth")) {
-        "Cyclic P spline"
-    } else if (inherits(smooth, "Bspline.smooth")) {
-        "B spline"
-    } else if (inherits(smooth, "duchon.spline")) {
-        "Duchon spline"
-    } else if (inherits(smooth, "fs.interaction")) {
-        "Factor smooth"
-    } else if (inherits(smooth, "gp.smooth")) {
-        "GP"
-    } else if (inherits(smooth, "mrf.smooth")) {
-        "MRF"
-    } else if (inherits(smooth, "random.effect")) {
-        "Random effect"
-    } else if (inherits(smooth, "sw")) {
-        "Soap (wiggly)"
-    } else if (inherits(smooth, "sf")) {
-        "Soap (boundary)"
-    } else if (inherits(smooth, "soap.film")) {
-        "Soap"
-    } else if (inherits(smooth, "t2.smooth")) {
-        "Tensor (T2)"
-    } else if (inherits(smooth, "sos.smooth")) {
-        "SOS"
-    } else if (inherits(smooth, "tensor.smooth")) {
-        "Tensor"
-    } else {
-        stop("Unknown type of smooth")
-    }
-
-    sm_dim <- smooth_dim(smooth)
-    if (sm_dim > 1L &&
-          sm_type %in% c("TPRS", "TPRS (shrink)", "Duchon spline")) {
-        sm_type <- paste0(sm_type, " (", sm_dim, "d)")
-    }
-
-    sm_type
 }
 
 #' Check user-supplied data for suitability
@@ -328,6 +276,7 @@
     lcms <- length(column_means)
     nc <- ncol(V)
     meanL1 <- smooth[["meanL1"]]
+    eta_idx <- lss_eta_index(model)
 
     if (isTRUE(overall_uncertainty) && attr(smooth, "nCons") > 0L) {
         if (lcms < nc) {
@@ -338,9 +287,15 @@
             Xcm <- Xcm / meanL1
         }
         Xcm[, para.seq] <- X
-        rs <- rowSums((Xcm %*% V) * Xcm)
+        # only apply the uncertainty from linear predictors of which this smooth
+        # is a part of
+        idx <- vapply(eta_idx, function(i, beta) any(beta %in% i),
+            FUN.VALUE = logical(1L), beta = para.seq)
+        idx <- unlist(eta_idx[idx])
+        rs <- rowSums((Xcm[, idx, drop = FALSE] %*%
+            V[idx, idx, drop = FALSE]) * Xcm[, idx, drop = FALSE])
     } else {
-        rs <- rowSums((X %*% V[para.seq, para.seq]) * X)
+        rs <- rowSums((X %*% V[para.seq, para.seq, drop = FALSE]) * X)
     }
 
     ## standard error of the estimate
@@ -422,7 +377,6 @@
                                  cols = c("est", "se"),
                                  dist = dist)
     }
-
     ## return
     eval_sm
 }
@@ -444,13 +398,15 @@
 #' @keywords internal
 #' @noRd
 #' @importFrom rlang .data
-`process_user_data_for_eval` <- function(data, model, n, n_3d, n_4d, id) {
+`process_user_data_for_eval` <- function(data, model, n, n_3d, n_4d, id,
+    var_order = NULL) {
     if (is.null(data)) {
         data <- smooth_data(model = model,
-                            n = n,
-                            n_3d = n_3d,
-                            n_4d = n_4d,
-                            id = id)
+            n = n,
+            n_3d = n_3d,
+            n_4d = n_4d,
+            id = id,
+            var_order = var_order)
    } else {
         smooth <- get_smooths_by_id(model, id)[[1L]]
         vars <- smooth_variable(smooth)
@@ -500,6 +456,43 @@
     sm_type <- smooth_type(smooth)
     eval_sm <- add_column(eval_sm, type = rep(sm_type, nr),
                           .after = 1L)
+    ## return
+    eval_sm
+}
+
+#' @rdname eval_smooth
+#' @export
+#' @importFrom tibble add_column
+`eval_smooth.sz.interaction` <- function(smooth, model, n = 100, data = NULL,
+                                         unconditional = FALSE,
+                                         overall_uncertainty = TRUE,
+                                         ...) {
+
+    by_var <- by_variable(smooth) # even if not a by as we want NA later
+    if (by_var == "NA") {
+        by_var <- NA_character_
+    }
+
+    ## deal with data if supplied
+    id <- which_smooth(model, smooth_label(smooth))
+    data <- process_user_data_for_eval(data = data, model = model,
+        n = n, n_3d = NULL, n_4d = NULL,
+        id = id)
+
+    ## values of spline at data
+    eval_sm <- spline_values2(smooth, data = data,
+        unconditional = unconditional,
+        model = model,
+        overall_uncertainty = overall_uncertainty)
+
+    ## add on info regarding by variable
+    nr <- nrow(eval_sm)
+    eval_sm <- add_column(eval_sm, by = rep(by_var, nr),
+        .after = 1L)
+    ## add on spline type info
+    sm_type <- smooth_type(smooth)
+    eval_sm <- add_column(eval_sm, type = rep(sm_type, nr),
+        .after = 1L)
     ## return
     eval_sm
 }
@@ -567,11 +560,14 @@
         by_var <- NA_character_
     }
 
+    # order of variables
+    var_order <- reorder_tensor_smooth_terms(smooth)
+
     ## deal with data if supplied
     id <- which_smooth(model, smooth_label(smooth))
     data <- process_user_data_for_eval(data = data, model = model,
                                        n = n, n_3d = n_3d, n_4d = n_4d,
-                                       id = id)
+                                       id = id, var_order = var_order)
 
     ## values of spline at data
     eval_sm <- spline_values2(smooth, data = data,
@@ -595,7 +591,13 @@
                                  dist = dist)
     }
 
+    tensor_term_order <- list(var_order) |>
+        setNames(smooth_label(smooth))
+    attr(eval_sm, "tensor_term_order") <- tensor_term_order
+
     ## return
+    class(eval_sm) <- append(class(eval_sm), c("tensor_eval_sm", "eval_sm"),
+        after = 0L)
     eval_sm
 }
 
@@ -603,7 +605,7 @@
 #' @export
 #' @importFrom tibble add_column
 `eval_smooth.tensor.smooth` <- function(smooth, model,
-                                        n = 100, 
+                                        n = 100,
                                         n_3d = NULL,
                                         n_4d = NULL,
                                         data = NULL,
@@ -616,43 +618,57 @@
         by_var <- NA_character_
     }
 
-    ## deal with data if supplied
+    # order of variables
+    var_order <- reorder_tensor_smooth_terms(smooth)
 
+    # deal with data if supplied
     id <- which_smooth(model, smooth_label(smooth))
     data <- process_user_data_for_eval(data = data, model = model,
-                                       n = n, n_3d = n_3d, n_4d = n_4d,
-                                       id = id)
+        n = n, n_3d = n_3d, n_4d = n_4d,
+        id = id, var_order = var_order)
 
     ## values of spline at data
     eval_sm <- spline_values2(smooth, data = data,
-                              unconditional = unconditional,
-                              model = model,
-                              overall_uncertainty = overall_uncertainty)
+        unconditional = unconditional,
+        model = model,
+        overall_uncertainty = overall_uncertainty)
 
     ## add on info regarding by variable
     nr <- nrow(eval_sm)
     eval_sm <- add_column(eval_sm, by = rep(by_var, nr),
-                          .after = 1L)
+        .after = 1L)
     ## add on spline type info
     sm_type <- smooth_type(smooth)
     eval_sm <- add_column(eval_sm, type = rep(sm_type, nr),
-                          .after = 1L)
+        .after = 1L)
 
     # set some values to NA if too far from the data
     if (smooth_dim(smooth) == 2L && (!is.null(dist) && dist > 0)) {
         eval_sm <- too_far_to_na(smooth,
-                                 input = eval_sm,
-                                 reference = model[["model"]],
-                                 cols = c("est", "se"),
-                                 dist = dist)
+            input = eval_sm,
+            reference = model[["model"]],
+            cols = c("est", "se"),
+            dist = dist)
     }
 
+    tensor_term_order <- list(var_order) |>
+        setNames(smooth_label(smooth))
+    attr(eval_sm, "tensor_term_order") <- tensor_term_order
+
     ## return
+    class(eval_sm) <- append(class(eval_sm), c("tensor_eval_sm", "eval_sm"),
+        after = 0L)
     eval_sm
 }
 
 #' Plot the result of a call to `smooth_estimates()`
 #'
+#' @param decrease_col,increase_col colour specifications to use for
+#'   indicating periods of change. `col_change` is used when
+#'   `change_type = "change"`, while `col_decrease` and `col_increase` are used
+#'   when `change_type = "sizer"``.
+#' @param change_lwd numeric; the value to set the `linewidth` to in
+#'   [ggplot2::geom_line()], used to represent the perdios of change.
 #' @param ylim numeric; vector of y axis limits to use all *all* panels drawn.
 #'
 #' @inheritParams draw.gam
@@ -679,48 +695,91 @@
 #'
 #' # Add a constant to the plotted smooth
 #' draw(sm, constant = coef(m)[1])
+#'
+#' # Adding change indicators to smooths based on derivatives of the smooth
+#' d <- derivatives(m, n = 100) # n to match smooth_estimates()
+#'
+#' smooth_estimates(m) |>
+#'     add_sizer(derivatives = d, type = "sizer") |>
+#'     draw()
 `draw.smooth_estimates` <- function(object,
                                     constant = NULL,
                                     fun = NULL,
                                     contour = TRUE,
+                                    grouped_by = FALSE,
                                     contour_col = "black",
                                     n_contour = NULL,
                                     ci_alpha = 0.2,
                                     ci_col = "black",
                                     smooth_col = "black",
                                     resid_col = "steelblue3",
+                                    decrease_col = "#56B4E9",
+                                    increase_col = "#E69F00",
+                                    change_lwd = 1.75,
                                     partial_match = FALSE,
                                     discrete_colour = NULL,
+                                    discrete_fill = NULL,
                                     continuous_colour = NULL,
                                     continuous_fill = NULL,
+                                    angle = NULL,
                                     ylim = NULL,
                                     projection = "orthographic",
                                     orientation = NULL,
                                     ...) {
-    smth_est <- split(object, f = object[["smooth"]])
-    plts <- vector(mode = "list", length = length(smth_est))
-    for (i in seq_along(smth_est)) {
-        ## add on confint
-        smth_est[[i]] <- add_confint(smth_est[[i]])
-        plts[[i]] <-
-            draw_smooth_estimates(smth_est[[i]],
-                                  constant = constant,
-                                  fun = fun,
-                                  contour = contour,
-                                  contour_col = contour_col,
-                                  n_contour = n_contour,
-                                  ci_alpha = ci_alpha,
-                                  ci_col = ci_col,
-                                  smooth_col = smooth_col,
-                                  partial_match = partial_match,
-                                  discrete_colour = discrete_colour,
-                                  continuous_colour = continuous_colour,
-                                  continuous_fill = continuous_fill,
-                                  ylim = ylim,
-                                  projection = projection,
-                                  orientation = orientation,
-                                  ...)
+    # add confidence intervals if they don't already exist
+    if (!all(c("lower_ci", "upper_ci") %in% names(object))) {
+        object <- object |> add_confint()
     }
+
+    # grab tensor term order if present, if not present it is NULL & that's OK
+    tensor_term_order <- attr(object, "tensor_term_order")
+
+    # draw smooths
+    # the factor in group_split is to reorder to way the smooths entered the
+    # model
+    sm_levs <- unique(object$smooth)
+
+    sm_l <- if (isTRUE(grouped_by)) {
+        # need the order of the smooths, I think
+        levs <- unique(str_split_fixed(object$smooth, ":", n = 2)[, 1])
+        # nest the object so we can reuse the code/ideas from draw.gam
+        object |>
+            nest(data = !all_of(c("smooth", "type", "by"))) |>
+            mutate(smooth = factor(.data$smooth, levels = sm_levs),
+                .term = str_split_fixed(.data$smooth, ":", n = 2)[, 1]) |>
+            arrange(.data$smooth) |>
+            relocate(".term", .before = 1L)|>
+            unnest(all_of("data")) |>
+            group_split(factor(.data$.term, levels = levs), .data$by)
+    } else {
+        # the factor is to reorder to way the smooths entered the model
+        group_split(object, factor(object$smooth, levels = sm_levs))
+    }
+    ## sm_l <- group_split(object, factor(object$smooth, levels = sm_levs))
+    plts <- map(sm_l,
+        draw_smooth_estimates,
+        constant = constant,
+        fun = fun,
+        contour = contour,
+        contour_col = contour_col,
+        n_contour = n_contour,
+        ci_alpha = ci_alpha,
+        ci_col = ci_col,
+        smooth_col = smooth_col,
+        increase_col = increase_col,
+        decrease_col = decrease_col,
+        change_lwd = change_lwd,
+        partial_match = partial_match,
+        discrete_colour = discrete_colour,
+        discrete_fill = discrete_fill,
+        continuous_colour = continuous_colour,
+        continuous_fill = continuous_fill,
+        angle = angle,
+        ylim = ylim,
+        projection = projection,
+        orientation = orientation,
+        tensor_term_order = tensor_term_order, # pass on tensor order info
+        ...)
 
     wrap_plots(plts)
 }
@@ -737,15 +796,28 @@
                                     ci_col = "black",
                                     smooth_col = "black",
                                     resid_col = "steelblue3",
+                                    decrease_col = "#56B4E9",
+                                    increase_col = "#E69F00",
+                                    change_lwd = 1.75,
                                     partial_match = FALSE,
                                     discrete_colour = NULL,
+                                    discrete_fill = NULL,
                                     continuous_colour = NULL,
                                     continuous_fill = NULL,
+                                    angle = NULL,
                                     ylim = NULL,
                                     projection = "orthographic",
                                     orientation = NULL,
+                                    tensor_term_order = NULL,
                                     ...) {
-    sm_vars <- vars_from_label(unique(object[["smooth"]]))
+    sm_vars <- tensor_term_order[[unique(object$smooth)]]
+    if (is.null(sm_vars)) {
+        sm_vars <- if (".term" %in% names(object)) {
+            vars_from_label(unique(object[[".term"]]))
+        } else {
+            vars_from_label(unique(object[["smooth"]]))
+        }
+    }
     sm_dim <- length(sm_vars)
     sm_type <- unique(object[["type"]])
 
@@ -781,6 +853,10 @@
         class(object) <- append(class(object),
                                 c("factor_smooth", "mgcv_smooth"),
                                 after = 0)
+    } else if (sm_type == "Constr. factor smooth") {
+        class(object) <- append(class(object),
+                                c("sz_factor_smooth", "mgcv_smooth"),
+                                after = 0)
     } else if (sm_type == "SOS") {
         class(object) <- append(class(object),
                                 c("sos", "mgcv_smooth"),
@@ -799,7 +875,7 @@
                                     after = 0)
         }
     } else if (sm_dim == 3L) {
-        # all 2D smooths get these classes
+        # all 3D smooths get these classes
         class(object) <- append(class(object),
                                 c("trivariate_smooth", "mgcv_smooth"),
                                 after = 0)
@@ -808,10 +884,10 @@
         # need to be handled the same way, but we don't need to handle
         # this as a special method, so add after the trivariate_smooth
         # class
-        if(sm_type %in% c("TPRS (3d)", "TPRS (shrink) (3d)",
-                          "Duchon spline (3d)")) {
+        if (sm_type %in% c("TPRS (3d)", "TPRS (shrink) (3d)",
+            "Duchon spline (3d)")) {
             class(object) <- append(class(object), "isotropic_smooth",
-                                    after = 1L)
+                after = 1L)
         }
     } else if (sm_dim == 4L) {
         # all 2D smooths get these classes
@@ -845,10 +921,15 @@
                 ci_col = ci_col,
                 smooth_col = smooth_col,
                 resid_col = resid_col,
+                increase_col = increase_col,
+                decrease_col = decrease_col,
+                change_lwd = change_lwd,
                 partial_match = partial_match,
                 discrete_colour = discrete_colour,
+                discrete_fill = discrete_fill,
                 continuous_colour = continuous_colour,
                 continuous_fill = continuous_fill,
+                angle = angle,
                 ylim = ylim,
                 projection = projection,
                 orientation = orientation,
@@ -861,7 +942,7 @@
 
 #' @importFrom dplyr mutate
 #' @importFrom ggplot2 ggplot geom_point geom_rug geom_abline
-#'   expand_limits labs geom_line geom_ribbon aes
+#'   expand_limits labs geom_line geom_ribbon aes guides guide_axis
 #' @importFrom rlang .data
 #' @keywords internal
 #' @noRd
@@ -875,6 +956,10 @@
                                        ci_col = "black",
                                        smooth_col = "black",
                                        resid_col = "steelblue3",
+                                       decrease_col = "#56B4E9",
+                                       increase_col = "#E69F00",
+                                       change_lwd = 1.75,
+                                       angle = NULL,
                                        xlab = NULL,
                                        ylab = NULL,
                                        title = NULL,
@@ -883,8 +968,17 @@
                                        partial_residuals = NULL,
                                        ylim = NULL,
                                        ...) {
-    if (is.null(variables)) {
-        variables <- vars_from_label(unique(object[["smooth"]]))
+    # do we have a grouped factor by?
+    grouped_by <- FALSE
+    if (".term" %in% names(object) && !all(is.na(object[["by"]]))) {
+        if (is.null(variables)) {
+            variables <- vars_from_label(unique(object[[".term"]]))
+        }
+        grouped_by <- TRUE
+    } else {
+        if (is.null(variables)) {
+            variables <- vars_from_label(unique(object[["smooth"]]))
+        }
     }
 
     # If constant supplied apply it to `est`
@@ -894,7 +988,15 @@
     object <- transform_fun(object, fun = fun)
 
     # base plot - need as.name to handle none standard names, like log2(x)
-    plt <- ggplot(object, aes(x = .data[[variables]], y = .data$est))
+    plt <- if (grouped_by) {
+        by_var <- unique(object$by)
+        ggplot(object, aes(x = .data[[variables]], y = .data$est,
+            colour = .data[[by_var]], group = .data[[by_var]])) +
+            guides(x = guide_axis(angle = angle))
+    } else {
+        ggplot(object, aes(x = .data[[variables]], y = .data$est)) +
+            guides(x = guide_axis(angle = angle))
+    }
 
     # do we want partial residuals? Only for univariate smooths without by vars
     if (!is.null(partial_residuals)) {
@@ -906,11 +1008,54 @@
     }
 
     # plot the confidence interval and smooth line
-    plt <- plt +
+    sizer_cols <- c(".change", ".increase", ".decrease")
+    do_sizer <- sizer_cols %in% names(object)
+    if (grouped_by) {
+        plt <- plt +
+        geom_ribbon(mapping = aes(ymin = .data[["lower_ci"]],
+                                  ymax = .data[["upper_ci"]],
+                                  fill = .data[[by_var]]),
+                    alpha = ci_alpha, colour = NA) +
+        geom_line(aes(colour = .data[[by_var]])) +
+            scale_colour_okabe_ito() +
+            scale_fill_okabe_ito()
+        if (any(do_sizer)) {
+            plt <- if (do_sizer[[1]]) {
+                plt + geom_line(aes(y = .data[[".change"]],
+                    colour = .data[[by_var]]), linewidth = change_lwd,
+                    na.rm = TRUE)
+            } else {
+                plt + geom_line(aes(y = .data[[".increase"]],
+                    colour = .data[[by_var]]), linewidth = change_lwd,
+                    na.rm = TRUE,
+                    show.legend = FALSE) +
+                    geom_line(aes(y = .data[[".decrease"]],
+                    colour = .data[[by_var]]), linewidth = change_lwd,
+                    na.rm = TRUE,
+                    show.legend = FALSE)
+            }
+        }
+    } else {
+        plt <- plt +
         geom_ribbon(mapping = aes(ymin = .data[["lower_ci"]],
                                   ymax = .data[["upper_ci"]]),
                     alpha = ci_alpha, colour = NA, fill = ci_col) +
         geom_line(colour = smooth_col)
+        if (any(do_sizer)) {
+            plt <- if (do_sizer[[1]]) {
+                plt + geom_line(aes(y = .data[[".change"]]),
+                    colour = smooth_col, linewidth = change_lwd, na.rm = TRUE,
+                    show.legend = FALSE)
+            } else {
+                plt + geom_line(aes(y = .data[[".increase"]]),
+                    colour = increase_col, linewidth = change_lwd,
+                    na.rm = TRUE, show.legend = FALSE) +
+                    geom_line(aes(y = .data[[".decrease"]]),
+                        colour = decrease_col, linewidth = change_lwd,
+                        na.rm = TRUE, show.legend = FALSE)
+            }
+        }
+    }
 
     ## default axis labels if none supplied
     if (is.null(xlab)) {
@@ -920,19 +1065,29 @@
         ylab <- "Partial effect"
     }
     if (is.null(title)) {
-        title <- unique(object[["smooth"]])
+        title <- ifelse(grouped_by, unique(object$.term),
+            as.character(unique(object$smooth)))
+    }
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
     }
     if (all(!is.na(object[["by"]]))) {
-        # is the by variable a factor or a numeric
-        by_class <- data_class(object)[[object[["by"]][[1L]]]]
-        by_var <- as.character(unique(object[["by"]]))
-        spl <- strsplit(title, split = ":")
-        title <- spl[[1L]][[1L]]
-        if (is.null(subtitle)) {
-            subtitle <- if (by_class != "factor") {
-                paste0("By: ", by_var) # continuous by
-            } else {
-                paste0("By: ", by_var, "; ", unique(object[[by_var]]))
+        if (grouped_by) {
+            if (is.null(subtitle)) {
+                subtitle <- paste0("By: ", by_var)
+            }
+        } else {
+            # is the by variable a factor or a numeric
+            by_class <- data_class(object)[[object[["by"]][[1L]]]]
+            by_var <- as.character(unique(object[["by"]]))
+            spl <- strsplit(title, split = ":")
+            title <- spl[[1L]][[1L]]
+            if (is.null(subtitle)) {
+                subtitle <- if (by_class != "factor") {
+                    paste0("By: ", by_var) # continuous by
+                } else {
+                    paste0("By: ", by_var, "; ", unique(object[[by_var]]))
+                }
             }
         }
     }
@@ -958,7 +1113,7 @@
 }
 
 #' @importFrom ggplot2 ggplot geom_point geom_raster geom_contour
-#'   expand_limits labs guides guide_colourbar theme
+#'   expand_limits labs guides guide_colourbar theme guide_axis
 #' @importFrom grid unit
 #' @importFrom rlang .data
 #' @keywords internal
@@ -979,6 +1134,7 @@
                                            caption = NULL,
                                            ylim = NULL,
                                            continuous_fill = NULL,
+                                           angle = NULL,
                                            ...) {
     if (is.null(variables)) {
         variables <- vars_from_label(unique(object[["smooth"]]))
@@ -999,7 +1155,7 @@
         guide_title <- "Partial\neffect"
         plot_var <- "est"
         guide_limits <- if (is.null(ylim)) {
-            c(-1, 1) * max(abs(object[[plot_var]]))
+            c(-1, 1) * max(abs(object[[plot_var]]), na.rm = TRUE)
         } else {
             ylim
         }
@@ -1030,6 +1186,9 @@
     if (is.null(title)) {
         title <- unique(object[["smooth"]])
     }
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
+    }
 
     if (all(!is.na(object[["by"]]))) {
         spl <- strsplit(title, split = ":")
@@ -1053,8 +1212,9 @@
     ## add guide
     plt <- plt +
         guides(fill = guide_colourbar(title = guide_title,
-                                      direction = "vertical",
-                                      barheight = grid::unit(0.25, "npc")))
+            direction = "vertical",
+            barheight = grid::unit(0.25, "npc")),
+        x = guide_axis(angle = angle))
 
     ## position legend at the
     plt <- plt + theme(legend.position = "right")
@@ -1092,9 +1252,13 @@
                                             caption = NULL,
                                             ylim = NULL,
                                             continuous_fill = NULL,
+                                            angle = NULL,
                                             ...) {
     if (is.null(variables)) {
-        variables <- vars_from_label(unique(object[["smooth"]]))
+        variables <- attr(object, "tensor_term_order")
+        if (is.null(variables)) {
+            variables <- vars_from_label(unique(object[["smooth"]]))
+        }
     }
 
     if (is.null(continuous_fill)) {
@@ -1112,7 +1276,7 @@
         guide_title <- "Partial\neffect"
         plot_var <- "est"
         guide_limits <- if (is.null(ylim)) {
-            c(-1, 1) * max(abs(object[[plot_var]]))
+            c(-1, 1) * max(abs(object[[plot_var]]), na.rm = TRUE)
         } else {
             ylim
         }
@@ -1125,7 +1289,7 @@
     plt <- ggplot(object, aes(x = .data[[variables[1]]],
                               y = .data[[variables[2]]])) +
         geom_raster(mapping = aes(fill = .data[[plot_var]])) +
-        facet_wrap(vars(.data[[variables[3]]]))
+            facet_wrap(vars(.data[[variables[3]]]))
 
     if (isTRUE(contour)) {
         plt <- plt + geom_contour(mapping = aes(z = .data[[plot_var]]),
@@ -1145,7 +1309,7 @@
         title <- unique(object[["smooth"]])
     }
     if (is.null(caption)) {
-        caption <- paste0("Facets: ", variables[3])
+        caption <- paste("Facets:", variables[3], "; Basis:", object[["type"]])
     }
 
     if (all(!is.na(object[["by"]]))) {
@@ -1171,7 +1335,8 @@
     plt <- plt +
         guides(fill = guide_colourbar(title = guide_title,
                                       direction = "vertical",
-                                      barheight = grid::unit(0.25, "npc")))
+                                      barheight = grid::unit(0.25, "npc")),
+        x = guide_axis(angle = angle))
 
     ## position legend at the
     plt <- plt + theme(legend.position = "right")
@@ -1226,6 +1391,7 @@
                                              caption = NULL,
                                              ylim = NULL,
                                              continuous_fill = NULL,
+                                             angle = NULL,
                                              ...) {
     if (is.null(variables)) {
         variables <- vars_from_label(unique(object[["smooth"]]))
@@ -1246,7 +1412,7 @@
         guide_title <- "Partial\neffect"
         plot_var <- "est"
         guide_limits <- if (is.null(ylim)) {
-            c(-1, 1) * max(abs(object[[plot_var]]))
+            c(-1, 1) * max(abs(object[[plot_var]]), na.rm = TRUE)
         } else {
             ylim
         }
@@ -1281,8 +1447,9 @@
         title <- unique(object[["smooth"]])
     }
     if (is.null(caption)) {
-        caption <- paste0("Facet rows: ", variables[3],
-                          "; columns: ", variables[4])
+        caption <- paste("Facet rows:", variables[3],
+            "; columns:", variables[4],
+            "; Basis:", object[["type"]])
     }
 
     if (all(!is.na(object[["by"]]))) {
@@ -1308,7 +1475,8 @@
     plt <- plt +
         guides(fill = guide_colourbar(title = guide_title,
                                       direction = "vertical",
-                                      barheight = grid::unit(0.25, "npc")))
+                                      barheight = grid::unit(0.25, "npc")),
+        x = guide_axis(angle = angle))
 
     ## position legend at the
     plt <- plt + theme(legend.position = "right")
@@ -1366,6 +1534,7 @@
                                         subtitle = NULL,
                                         caption = NULL,
                                         ylim = NULL,
+                                        angle = NULL,
                                         ...) {
     if (is.null(variables)) {
         variables <- vars_from_label(unique(object[["smooth"]]))
@@ -1379,7 +1548,8 @@
 
     ## base plot with computed QQs
     plt <- ggplot(object, aes(sample = .data[["est"]])) +
-        geom_point(stat = "qq")
+        geom_point(stat = "qq") +
+        guides(x = guide_axis(angle = angle))
 
     ## add a QQ reference line
     if (isTRUE(qq_line)) {
@@ -1401,6 +1571,10 @@
     if(is.null(title)) {
         title <- variables
     }
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
+    }
+
     if (all(!is.na(object[["by"]]))) {
         spl <- strsplit(title, split = ":")
         title <- spl[[1L]][[1L]]
@@ -1439,6 +1613,7 @@
                                         caption = NULL,
                                         ylim = NULL,
                                         discrete_colour = NULL,
+                                        angle = NULL,
                                        ...) {
     if (is.null(variables)) {
         variables <- vars_from_label(unique(object[["smooth"]]))
@@ -1459,7 +1634,8 @@
                               colour = .data[[variables[2]]])) +
         geom_line() +
         discrete_colour +
-        theme(legend.position = "none")
+        theme(legend.position = "none") +
+        guides(x = guide_axis(angle = angle))
 
     ## default axis labels if none supplied
     if (missing(xlab)) {
@@ -1471,6 +1647,10 @@
     if (is.null(title)) {
         title <- unique(object[["smooth"]])
     }
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
+    }
+
     if (all(!is.na(object[["by"]]))) {
         spl <- strsplit(title, split = ":")
         title <- spl[[1L]][[1L]]
@@ -1488,6 +1668,147 @@
     if (!is.null(rug)) {
         plt <- plt + geom_rug(data = rug,
                               mapping = aes(x = .data[[variables[1]]]),
+                              inherit.aes = FALSE,
+                              sides = "b", alpha = 0.5)
+    }
+
+    ## fixing the y axis limits?
+    if (!is.null(ylim)) {
+        plt <- plt + expand_limits(y = ylim)
+    }
+
+    plt
+}
+
+#' @importFrom rlang .data
+#' @importFrom ggplot2 ggplot geom_point geom_line expand_limits theme aes
+#'   labs scale_fill_hue scale_colour_hue
+#' @importFrom ggokabeito scale_colour_okabe_ito scale_fill_okabe_ito
+#' @keywords internal
+#' @noRd
+`plot_smooth.sz_factor_smooth` <- function(object,
+                                           variables = NULL,
+                                           rug = NULL,
+                                           constant = NULL,
+                                           fun = NULL,
+                                           ci_alpha = 0.2,
+                                           xlab = NULL,
+                                           ylab = NULL,
+                                           title = NULL,
+                                           subtitle = NULL,
+                                           caption = NULL,
+                                           ylim = NULL,
+                                           discrete_colour = NULL,
+                                           discrete_fill = NULL,
+                                           angle = NULL,
+                                           ...) {
+    if (is.null(variables)) {
+        variables <- vars_from_label(unique(object[["smooth"]]))
+    }
+
+    # variables will likely be length two, but it could be >2 if there are
+    # multivariate factors
+    fs <- vapply(object[variables], is.factor, logical(1L))
+    if (length(variables) > 2L) {
+        object <- mutate(object,
+            ".sz_var" = interaction(object[variables[fs]], sep = ":",
+            lex.order = TRUE))
+        fac_var <- ".sz_var"
+        fac_var_lab <- paste(variables[fs], sep = ":")
+        x_var <- variables[!fs]
+
+        # need to repeat for the rug
+        if (!is.null(rug)) {
+            rug <- mutate(rug,
+                ".sz_var" = interaction(object[variables[fs]], sep = ":",
+            lex.order = TRUE))
+        }
+
+        if (length(x_var) > 1L) {
+            # this is a bivariate sz factor smooth, which we can't handle yet
+            return(NULL)
+        }
+    } else {
+        # which is the factor?
+        if (fs[1L]) {
+            x_var <- variables[2]
+            fac_var <- fac_var_lab <- variables[1]
+        } else {
+            x_var <- variables[1]
+            fac_var <- fac_var_lab <- variables[2]
+        }
+    }
+
+    # how many levels? can't have more than 9 for okabeito
+    n_levs <- nlevels(object[[fac_var]])
+    if (is.null(discrete_colour)) {
+        discrete_colour <- if (n_levs > 9L) {
+            scale_colour_hue()
+        } else {
+            scale_colour_okabe_ito()
+        }
+    }
+
+    if (is.null(discrete_fill)) {
+        discrete_fill <- if (n_levs > 9L) {
+            scale_fill_hue()
+        } else {
+            scale_fill_okabe_ito()
+        }
+    }
+
+    ## If constant supplied apply it to `est`
+    object <- add_constant(object, constant = constant)
+
+    ## If fun supplied, use it to transform est and the upper and lower interval
+    object <- transform_fun(object, fun = fun)
+
+    # plot
+    plt <- ggplot(object, aes(x = .data[[x_var]],
+                              y = .data[["est"]],
+                              colour = .data[[fac_var]])) +
+        geom_ribbon(mapping = aes(ymin = .data[["lower_ci"]],
+                                  ymax = .data[["upper_ci"]],
+                                  fill = .data[[fac_var]],
+                                  colour = NULL),
+                    alpha = ci_alpha) +
+        geom_line() +
+        discrete_colour +
+        discrete_fill +
+        guides(x = guide_axis(angle = angle))
+
+    ## default axis labels if none supplied
+    if (missing(xlab)) {
+        xlab <- x_var
+    }
+    if (missing(ylab)) {
+        ylab <- "Partial effect"
+    }
+    if (is.null(title)) {
+        title <- unique(object[["smooth"]])
+    }
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
+    }
+
+    if (all(!is.na(object[["by"]]))) {
+        spl <- strsplit(title, split = ":")
+        title <- spl[[1L]][[1L]]
+        if (is.null(subtitle)) {
+            by_var <- as.character(unique(object[["by"]]))
+            subtitle <- paste0("By: ", by_var, "; ", unique(object[[by_var]]))
+        }
+    }
+
+    ## add labelling to plot
+    plt <- plt + labs(x = xlab, y = ylab, title = title, subtitle = subtitle,
+        caption = caption, colour = fac_var_lab, fill = fac_var_lab)
+
+    ## add rug?
+    if (!is.null(rug)) {
+        plt <- plt + geom_rug(data = rug,
+                              mapping = aes(x = .data[[x_var]],
+                              colour = .data[[fac_var]]),
                               inherit.aes = FALSE,
                               sides = "b", alpha = 0.5)
     }
@@ -1519,8 +1840,17 @@
                               continuous_fill = NULL,
                               projection = "orthographic",
                               orientation = NULL,
+                              angle = NULL,
                               ...) {
     # handle splines on the sphere
+
+    # this currently needs the mapproj pkg for coord_map()
+    if (!requireNamespace("mapproj", quietly = TRUE)) {
+        message("\nPlotting SOS smooths uses `ggplot2::coord_map()`.\n",
+            "This requires that the {mapproj} package be installed.\n",
+            "Run: `install.packages(\"mapproj\")`\n")
+        stop("Package {mapproj} is not available.")
+    }
 
     if (is.null(variables)) {
         variables <- vars_from_label(unique(object[["smooth"]]))
@@ -1541,7 +1871,7 @@
         guide_title <- "Partial\neffect"
         plot_var <- "est"
         guide_limits <- if (is.null(ylim)) {
-            c(-1, 1) * max(abs(object[[plot_var]]))
+            c(-1, 1) * max(abs(object[[plot_var]]), na.rm = TRUE)
         } else {
             ylim
         }
@@ -1585,6 +1915,10 @@
         title <- unique(object[["smooth"]])
     }
 
+    if (is.null(caption)) {
+        caption <- paste("Basis:", object[["type"]])
+    }
+
     if (all(!is.na(object[["by"]]))) {
         # is the by variable a factor or a numeric
         by_class <- data_class(object)[[object[["by"]][[1L]]]]
@@ -1613,8 +1947,9 @@
     ## add guide
     plt <- plt +
         guides(fill = guide_colourbar(title = guide_title,
-                                      direction = "vertical",
-                                      barheight = grid::unit(0.25, "npc")))
+            direction = "vertical",
+            barheight = grid::unit(0.25, "npc")),
+            x = guide_axis(angle = angle))
 
     ## position legend at the
     plt <- plt + theme(legend.position = "right")

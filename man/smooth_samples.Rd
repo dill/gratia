@@ -11,20 +11,30 @@ smooth_samples(model, ...)
   model,
   term = NULL,
   n = 1,
-  newdata = NULL,
+  data = newdata,
+  method = c("gaussian", "mh", "inla", "user"),
   seed = NULL,
   freq = FALSE,
   unconditional = FALSE,
-  ncores = 1L,
+  n_cores = 1L,
   n_vals = 200,
-  ...
+  burnin = 1000,
+  thin = 1,
+  t_df = 40,
+  rw_scale = 0.25,
+  rng_per_smooth = FALSE,
+  ...,
+  newdata = NULL,
+  ncores = NULL
 )
 }
 \arguments{
 \item{model}{a fitted model of the supported types}
 
 \item{...}{arguments passed to other methods. For \code{fitted_samples()}, these
-are passed on to \code{predict.gam()}.}
+are passed on to \code{predict.gam()}. For \code{posterior_samples()} these are
+passed on to \code{fitted_samples()}. For \code{predicted_samples()} these are
+passed on to the relevant \code{simulate()} method.}
 
 \item{term}{character; select which smooth's posterior to draw from.
 The default (\code{NULL}) means the posteriors of all smooths in \code{model}
@@ -32,9 +42,18 @@ wil be sampled from. If supplied, a character vector of requested terms.}
 
 \item{n}{numeric; the number of posterior samples to return.}
 
-\item{newdata}{data frame; new observations at which the posterior draws
+\item{data}{data frame; new observations at which the posterior draws
 from the model should be evaluated. If not supplied, the data used to fit
-the model will be used for \code{newdata}, if available in \code{model}.}
+the model will be used for \code{data}, if available in \code{model}.}
+
+\item{method}{character; which method should be used to draw samples from
+the posterior distribution. \code{"gaussian"} uses a Gaussian (Laplace)
+approximation to the posterior. \code{"mh"} uses a Metropolis Hastings sample
+that alternates t proposals with proposals based on a shrunken version of
+the posterior covariance matrix. \code{"inla"} uses a variant of Integrated
+Nested Laplace Approximation due to Wood (2019), (currently not
+implemented). \code{"user"} allows for user-supplied posterior draws
+(currently not implemented).}
 
 \item{seed}{numeric; a random seed for the simulations.}
 
@@ -46,13 +65,39 @@ covariance matrix of the parameters.}
 Bayesian smoothing parameter uncertainty corrected covariance matrix is
 used, if available.}
 
-\item{ncores}{number of cores for generating random variables from a
+\item{n_cores}{number of cores for generating random variables from a
 multivariate normal distribution. Passed to \code{\link[mvnfast:rmvn]{mvnfast::rmvn()}}.
 Parallelization will take place only if OpenMP is supported (but appears
 to work on Windows with current \code{R}).}
 
 \item{n_vals}{numeric; how many locations to evaluate the smooth at if
-\code{newdata} not supplied}
+\code{data} not supplied}
+
+\item{burnin}{numeric; number of samples to discard as the burnin draws.
+Only used with \code{method = "mh"}.}
+
+\item{thin}{numeric; the number of samples to skip when taking \code{n} draws.
+Results in \code{thin * n} draws from the posterior being taken. Only used with
+\code{method = "mh"}.}
+
+\item{t_df}{numeric; degrees of freedome for t distribution proposals. Only
+used with \code{method = "mh"}.}
+
+\item{rw_scale}{numeric; Factor by which to scale posterior covariance
+matrix when generating random walk proposals. Negative or non finite to
+skip the random walk step. Only used with \code{method = "mh"}.}
+
+\item{rng_per_smooth}{logical; if TRUE, the behaviour of gratia version
+0.8.1 or earlier is used, whereby a separate call the the random number
+generator (RNG) is performed for each smooth. If FALSE, a single call to the
+RNG is performed for all model parameters}
+
+\item{newdata}{Deprecated: use \code{data} instead.}
+
+\item{ncores}{Deprecated; use \code{n_cores} instead. The number of cores for
+generating random variables from a multivariate normal distribution.
+Passed to \code{\link[mvnfast:rmvn]{mvnfast::rmvn()}}. Parallelization will take place only if
+OpenMP is supported (but appears to work on Windows with current \code{R}).}
 }
 \value{
 A tibble with additional classes \code{"smooth_samples"} and
@@ -69,20 +114,14 @@ example.
 \item \code{by_variable}; character vector. If the smooth involves a \code{by} term, the
 by variable will be named here, \code{NA_character_} otherwise.
 \item \code{row}; integer. A vector of values \code{seq_len(n_vals)}, repeated if
-\code{n > 1L}. Indexes the row in \code{newdata} for that particular draw.
+\code{n > 1L}. Indexes the row in \code{data} for that particular draw.
 \item \code{draw}; integer. A vector of integer values indexing the particular
 posterior draw that each row belongs to.
 \item \code{value}; numeric. The value of smooth function for this posterior draw
 and covariate combination.
-\item \code{.xN}; numeric. A series of one or more columns containing data required
-for the smooth. \code{.x1} will always be present and contains the values of
-the covariate in the smooth. For example if \code{smooth} is \code{s(z)} then
-\code{.x1} will contain the values of covariate \code{z} at which the smooth was
-evaluated. Further covariates for multi-dimensional thin plate splines
-(e.g. \code{s(x, z)}) or tensor product smooths (e.g. \code{te(x,z,a)}) will
-result in variables \code{.x1} and \code{.x2}, and \code{.x1}, \code{.x2}, and \code{.x3}
-respectively, with the number (\code{1}, \code{2}, etc) representing the order
-in which the covariates were specified in the smooth.
+\item \code{xxx}; numeric. A series of one or more columns containing data required
+for the smooth, named as per the variables involved in the respective
+smooth.
 \item Additional columns will be present in the case of factor by smooths,
 which will contain the level for the factor named in \code{by_variable} for
 that particular posterior draw.

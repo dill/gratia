@@ -223,6 +223,13 @@ test_that("link() works for cox.ph() family objects", {
     expect_identical(f, cox.ph()$linkfun)
 })
 
+test_that("link() works for cnorm() family objects", {
+    f <- link(cnorm())
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkfun)
+})
+
 ## inv_link
 test_that("inv_link() works for gaussian() family objects", {
     f <- inv_link(gaussian())
@@ -344,6 +351,13 @@ test_that("inv_link() works for cox.ph() family objects", {
     expect_type(f, "closure")
     expect_identical(f(val), cox.ph()$linkinv(val))
     expect_identical(f, cox.ph()$linkinv)
+})
+
+test_that("inv_link() works for cnorm() family objects", {
+    f <- inv_link(cnorm())
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkinv)
 })
 
 test_that("extract_link() works on gaussian() family objects", {
@@ -998,6 +1012,19 @@ test_that("extract_link() works on shash() family objects", {
     expect_identical(f, fam$linfo[[4L]]$linkinv)
 })
 
+test_that("extract_link() works on cnorm() family objects", {
+    ## link
+    f <- extract_link(cnorm())
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkfun)
+    ## inverse
+    f <- extract_link(cnorm(), inverse = TRUE)
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkinv)
+})
+
 ## tests some specific extract functions
 test_that("twlss_link() can extract a link function", {
     fam <- twlss()
@@ -1271,4 +1298,22 @@ test_that("family_name() works with a family() object", {
     f <- family_name(gaussian())
     expect_type(f, "character")
     expect_identical(f, "gaussian")
+})
+
+# special cnorm tests
+test_that("family utils work on cnorm() family objects from a model", {
+    ## link
+    f <- extract_link(family(m_censor))
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkfun)
+    ## inverse
+    f <- extract_link(family(m_censor), inverse = TRUE)
+    expect_type(f, "closure")
+    expect_identical(f(val), val)
+    expect_identical(f, cnorm()$linkinv)
+
+    f <- family_name(m_censor)
+    expect_type(f, "character")
+    expect_match(f, "^cnorm\\(\\d+\\.?\\d+\\)$")
 })

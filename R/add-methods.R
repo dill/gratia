@@ -46,7 +46,7 @@
 #' }
 #' df <- data_sim("eg1", seed = 1)
 #' df <- df[, c("y","x0","x1","x2","x3")]
-#' m <-  gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), data = df, method = 'REML')
+#' m <-  gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), data = df, method = "REML")
 #'
 #' ##
 #' add_fitted(df, m)
@@ -79,7 +79,7 @@
         }
         data <- bind_cols(data, pred_vals)
     } else {
-        data <- add_column(data, !!value := drop(pred_vals),
+        data <- add_column(data, !!value := as.numeric(pred_vals),
                            .after = ncol(data))
     }
 
@@ -264,7 +264,26 @@
                  call. = FALSE)
         }
         object <- mutate(object,
-                         across(any_of(c("est", "lower", "upper")),
+                         across(any_of(c("est", "lower_ci", "upper_ci")),
+                                .fns = ~ .x + constant))
+    }
+
+    object
+}
+
+#' @rdname add_constant
+#' @export
+#' @importFrom dplyr mutate across
+#' @importFrom tidyselect any_of
+`add_constant.smooth_samples` <- function(object, constant = NULL, ...) {
+    ## If constant supplied, add it to `est`
+    if (!is.null(constant)) {
+        if (!is.numeric(constant)) {
+            stop("'constant' must be numeric: supplied <", constant, ">",
+                 call. = FALSE)
+        }
+        object <- mutate(object,
+                         across(any_of(c("value", "lower", "upper")),
                                 .fns = ~ .x + constant))
     }
 
@@ -403,7 +422,7 @@
 
     if (!all(c("est", "se") %in% nms)) {
         stop("'object' does not contain one or both of ",
-             "'est' or 'se'.")
+            "'est' or 'se'.")
     }
 
     ## compute the critical value
@@ -411,11 +430,114 @@
 
     ## add the frequentist confidence interval
     object <- mutate(object,
-                     lower_ci = .data$est - (crit * .data$se),
-                     upper_ci = .data$est + (crit * .data$se)) %>%
-      relocate(all_of(c("lower_ci", "upper_ci")),
-               .after = all_of("se"))
+        lower_ci = .data$est - (crit * .data$se),
+        upper_ci = .data$est + (crit * .data$se)) %>%
+        relocate(all_of(c("lower_ci", "upper_ci")),
+            .after = all_of("se"))
 
     ## return
+    object
+}
+
+#' Add indicators of significant change after SiZeR
+#'
+#' @param object an R object. Currently supported methods are for classes
+#'   `"derivatives"`.
+#' @param type character; `"change"` adds a single variable to `object`
+#'   indicating where the credible interval on the derivative excludes 0.
+#'   `"sizer"` adds two variables indicating whether the derivative is postive
+#'   or negative.
+#' @param ... arguments passed to other methods
+#'
+#' @export
+#' @examples
+#' load_mgcv()
+#' \dontshow{
+#' op <- options(pillar.sigfig = 3, cli.unicode = FALSE)
+#' }
+#' dat <- data_sim("eg1", n = 400, dist = "normal", scale = 2, seed = 42)
+#' mod <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), data = dat, method = "REML")
+#'
+#' ## first derivatives of all smooths using central finite differences
+#' d <- derivatives(mod, type = "central") |>
+#'     add_sizer()
+#'
+#' # default adds a .change column
+#' names(d)
+`add_sizer` <- function(object, type = c("change", "sizer"), ...) {
+    UseMethod("add_sizer")
+}
+
+#' @export
+#' @importFrom dplyr mutate case_when
+#' @importFrom rlang .data
+#' @rdname add_sizer
+`add_sizer.derivatives` <- function(object, type = c("change", "sizer"), ...) {
+    # match the type argument
+    type <- match.arg(type)
+
+    # if just doing a change indicator
+    object <- if (isTRUE(identical(type, "change"))) {
+        object |>
+            mutate(.change =
+                case_when(.data$lower > 0 | .data$upper < 0 ~ .data$derivative,
+                    .default = NA_real_))
+    } else { # other wise we are adding a sizer-like indicator
+        object |>
+            mutate(
+                .decrease = case_when(.data$upper < 0 ~ .data$derivative,
+                    .default = NA_real_),
+                .increase = case_when(.data$lower > 0 ~ .data$derivative,
+                    .default = NA_real_))
+
+    }
+    object
+}
+
+#' @param derivatives an object of class `"derivatives"`, resulting from a call
+#'   to [derivatives()].
+#' @export
+#' @importFrom dplyr mutate case_when bind_cols
+#' @importFrom rlang .data
+#' @rdname add_sizer
+`add_sizer.smooth_estimates` <- function(object, type = c("change", "sizer"),
+    derivatives = NULL, ...) {
+    # match the type argument
+    type <- match.arg(type)
+
+    # must supply derivatives
+    if (is.null(derivatives)) {
+        stop("An object of class 'derivatives' must be supplied.")
+    }
+    # must be of the correct class
+    if (!inherits(derivatives, "derivatives")) {
+        stop("Supplied 'derivatives' is not of class 'derivatives'")
+    }
+    # if we get this far, derivatives must be checked to see that it matches
+    # object. Right now this isn't easy as derivatives is older and stores
+    # all covariate information in column `data`, so for now, just leave this
+    # up to the user to ensure
+    if (nrow(object) != nrow(derivatives)) {
+        stop("Number of rows in 'object' and 'derivatives' are not equal.")
+    }
+
+    # if just doing a change indicator
+    object <- if (isTRUE(identical(type, "change"))) {
+        derivatives <- derivatives |>
+            mutate(.change =
+                case_when(.data$lower > 0 | .data$upper < 0 ~ object$est,
+                    .default = NA_real_))
+        object |> bind_cols(.change = derivatives$.change)
+    } else { # otherwise we are adding a sizer-like indicator
+        derivatives <- derivatives |>
+            mutate(
+                .decrease = case_when(.data$upper < 0 ~ object$est,
+                    .default = NA_real_),
+                .increase = case_when(.data$lower > 0 ~ object$est,
+                    .default = NA_real_))
+        object |> bind_cols(.decrease = derivatives$.decrease,
+            .increase = derivatives$.increase)
+
+    }
     object
 }

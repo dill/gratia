@@ -6,7 +6,7 @@
 
 [![R build
 status](https://github.com/gavinsimpson/gratia/workflows/R-CMD-check/badge.svg)](https://github.com/gavinsimpson/gratia/actions)
-[![codecov.io](https://codecov.io/gh/gavinsimpson/gratia/branch/master/graph/badge.svg)](https://app.codecov.io/gh/gavinsimpson/gratia)
+[![codecov](https://codecov.io/gh/gavinsimpson/gratia/branch/main/graph/badge.svg?token=GG5NQfgRFu)](https://app.codecov.io/gh/gavinsimpson/gratia)
 [![CRAN\_Status\_Badge](https://www.r-pkg.org/badges/version/gratia)](https://cran.r-project.org/package=gratia)
 [![CRAN
 Downloads](https://cranlogs.r-pkg.org/badges/grand-total/gratia)](https://cran.r-project.org/package=gratia)
@@ -36,10 +36,12 @@ The main features of *gratia* are currently
     ![Estimated smooths from a
     GAM](man/figures/README-draw-gam-figure-2d-1.png)
 
-    Note specialist smoothers (`bs %in% c("mrf","so")`) are not
-    currently supported, but univariate, *factor* and *continuous*
-    `by`-variable smooths, simple random effect smooths (`bs = 're'`),
-    factor-smooth interaction smooths (`bs = "fs"`), and bivariate
+    Note that some specialist smoothers (`bs %in% c("mrf","sw", "sf")`)
+    are not currently supported, but univariate, *factor* and
+    *continuous* `by`-variable smooths, simple random effect smooths
+    (`bs = 're'`), factor-smooth interaction smooths (`bs = "fs"`),
+    constrained factor smooths (`bs = "sz"`), full soap film smooths
+    (`bs = "so"`), and bivariate, trivariate, and quadvariate TPRS and
     tensor product smooths are supported,
 
 -   Estimatation of derivatives of fitted smoothers: `derivatives()`,
@@ -65,7 +67,12 @@ have *remotes* installed, then run
 
     remotes::install_github("gavinsimpson/gratia")
 
-to install the package.
+to install the package. Alternatively, binary packages of the
+development version are available from rOpenSci’s R Universe service:
+
+    # Install gratia in R
+    install.packages("gratia", repos = c("https://gavinsimpson.r-universe.dev",
+      "https://cloud.r-project.org"))
 
 ## History
 
