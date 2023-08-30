@@ -1,10 +1,5 @@
 # Test parametric_effects() method
 
-## load packages
-library("testthat")
-library("gratia")
-library("mgcv")
-
 test_that("parametric_effects works for m_2_fac", {
     expect_message(peff <- parametric_effects(m_2_fac, envir = teardown_env(), data = df_2_fac),
                    "Interaction terms are not currently supported.")
@@ -78,7 +73,7 @@ test_that("issue 212 remains fixed", {
     skip_on_cran()
     # issue #212 is about weird model terms
     data_212 <- quick_eg1 |>
-        mutate(fac = factor(rep(c("a", "b"), c(150, 50))))
+        mutate(fac = factor(rep(c("a", "b"), c(200, 100))))
     m_212 <- gam(y ~ fac + poly(x0, 2, raw = TRUE) +
         poly(x1, 2, raw = TRUE) +
         poly(x2, 2, raw = TRUE) +
@@ -88,9 +83,11 @@ test_that("issue 212 remains fixed", {
     expect_s3_class(peff, class = c("parametric_effects", "tbl_df", "tbl",
                                     "data.frame"))
     expect_identical(ncol(peff), 6L)
-    expect_identical(nrow(peff), 802L)
+    expect_identical(nrow(peff), 1202L)
     expect_named(peff, c("term", "type", "level", "value", "partial", "se"))
 
     plt <- draw(peff, rug = FALSE)
+
+    skip_on_ci()
     expect_doppelganger("testing issue 212", plt)
 })

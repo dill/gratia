@@ -987,7 +987,7 @@
 #'
 #' # response derivatives
 #' y_d <- response_derivatives(m, data = ds, type = "central",
-#'                             focal = "x2", eps = 0.01)
+#'                             focal = "x2", eps = 0.01, seed = 21)
 #'
 #' # draw fitted values along x2
 #' p1 <- fv |>
@@ -1083,7 +1083,7 @@
             lower_ci = quantile(.data[["..fd"]], probs = qq),
             upper_ci = quantile(.data[["..fd"]], probs = 1 - qq)) |>
         left_join(data, by = join_by("..orig" == "..row")) |>
-        rename("{focal}" := .data[[".x"]]) |>
+        rename("{focal}" := ".x") |>
         select(!matches(c("..xf", "..xb", "..orig"))) |>
         add_column(focal = rep(focal, nrow(data)), .before = 1L)
 

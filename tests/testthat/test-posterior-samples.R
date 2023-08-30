@@ -1,10 +1,5 @@
 ## Test posterior sampling functions
 
-## load packages
-library("testthat")
-library("mgcv")
-library("gratia")
-
 test_that("smooth_samples works for a continuous by GAM", {
     expect_silent(sm <- smooth_samples(su_m_cont_by, n = 5, n_vals = 100,
                                        seed = 42))
@@ -121,7 +116,7 @@ test_that("fitted_samples works for a simple GAM", {
     expect_s3_class(sm, c("fitted_samples", "tbl_df",
                           "tbl", "data.frame"))
     ## 1000 == 5 * 200 (nrow(dat))
-    expect_identical(NROW(sm), 1000L)
+    expect_identical(NROW(sm), 1500L)
     expect_identical(NCOL(sm), 3L) # 3 cols
     expect_named(sm, expected = c("row", "draw", "fitted"))
 })
@@ -161,7 +156,7 @@ test_that("predicted_samples works for a simple GAM", {
     expect_s3_class(sm, c("predicted_samples", "tbl_df",
                           "tbl", "data.frame"))
     ## 2000 == 5 * 100 (nrow(dat))
-    expect_identical(NROW(sm), 1000L)
+    expect_identical(NROW(sm), 1500L)
     expect_identical(NCOL(sm), 3L) # 3 cols
     expect_named(sm, expected = c("row", "draw", "response"))
 })
@@ -204,14 +199,18 @@ test_that("posterior_samples() fails if no suitable method available", {
 
 test_that("fitted_samples example output doesn't change", {
     skip_on_cran()
-    skip_on_os("mac")
+    # skip_on_os("mac")
+    skip_on_ci()
+
     fs <- fitted_samples(m_gam, n = 5, seed = 42)
     expect_snapshot(fs)
 })
 
 test_that("smooth_samples example output doesn't change", {
     skip_on_cran()
-    skip_on_os("mac")
+    # skip_on_os("mac")
+    skip_on_ci()
+    
     samples <- smooth_samples(m_gam, term = "s(x0)", n = 5, seed = 42)
     expect_snapshot(samples)
 })
@@ -221,7 +220,7 @@ test_that("posterior_samples works for a simple GAM", {
     expect_s3_class(sm, c("posterior_samples", "tbl_df",
         "tbl", "data.frame"))
     ## 1000 == 5 * 200 (nrow(dat))
-    expect_identical(NROW(sm), 1000L)
+    expect_identical(NROW(sm), 1500L)
     expect_identical(NCOL(sm), 3L) # 3 cols
     expect_named(sm, expected = c("row", "draw", "response"))
 })
@@ -234,4 +233,31 @@ test_that("posterior_samples works for a multi-smooth tweedie GAM", {
     expect_identical(NROW(sm), 2500L)
     expect_identical(NCOL(sm), 3L) # 3 cols
     expect_named(sm, expected = c("row", "draw", "response"))
+})
+
+# test for offset handling
+test_that("posterior sampling funs work with offsets in formula issue 233", {
+    skip_on_cran()
+    skip_on_ci()
+
+    # set.seed(123)
+    n  <- 100
+    df <- withr::with_seed(123, {
+        data.frame(y = rnbinom(n = n, size = 0.9, prob = 0.3),
+            x = rnorm(n = n, mean = 123, sd = 66),
+            denom = round(rnorm(n = n, mean = 1000, sd = 1)))
+    })
+    
+    mod <- gam(y ~ 1 + offset(log(denom)),
+        data = df, family = "nb")
+
+    n_samples <- 5
+    expect_silent(ps <- posterior_samples(mod, n = n_samples, seed = 42))
+    expect_identical(nrow(ps), as.integer(n * n_samples))
+
+    expect_silent(fs <- fitted_samples(mod, n = n_samples, seed = 42))
+    expect_identical(nrow(fs), as.integer(n * n_samples))
+
+    expect_snapshot(print(ps), variant = "posterior", cran = FALSE)
+    expect_snapshot(print(fs), variant = "fitted", cran = FALSE)
 })

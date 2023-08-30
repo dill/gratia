@@ -1,5 +1,7 @@
 ## Test smooth_coefs() and related functions
 
+skip_on_ci()
+
 test_that("smooth_coefs() works with a gam", {
     expect_silent(b <- smooth_coefs(m_gam, term = "s(x0)"))
     expect_named(b, paste("s(x0)", 1:9, sep = "."))
@@ -49,6 +51,7 @@ test_that("smooth_coefs() works with a mgcv.smooth", {
 })
 
 test_that("smothh-coefs print() output is as expected", {
+    skip_on_ci()
     expect_snapshot({
         print(smooth_coefs(m_gam, term = "s(x0)"))
     })

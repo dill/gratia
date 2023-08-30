@@ -1,4 +1,4 @@
-# gratia 0.8.1.27
+# gratia 0.8.1.37
 
 ## User visible changes
 
@@ -23,6 +23,8 @@
   when nothing is provided to `data`.
 
   This also affects `draw.gam()`.
+
+* *gratia* now requires *dplyr* versions >= 1.1.0 and *tidyselect* >= 1.2.0.
 
 ## New features
 
@@ -165,6 +167,27 @@
 
 * `parametric_effects()` now works better for location, scale, shape models.
   Reported by @pboesu #45
+
+* `parametric_effects` now works when there are missing values in one or more
+  variables used in a fitted GAM. #219
+
+* `response_derivatives()` was incorrectly using `.data` with *tidyselect*
+  selectors.
+
+* `typical_values()` could not handle logical variables in a GAM fit as mgcv
+  stores these as numerics in the `var.summary`. This affected `evenly()` and
+  `data_slice()`. #222
+
+* `parametric_effects()` would fail when two or more ordered factors were in
+  the model. Reported by @dsmi31 #221
+
+* Continuous by smooths were being evaluated with the median value of the `by`
+  variable instead of a value of 1. #224
+
+* `fitted_samples()` (and hence `posterior_samples()`) now handles models with
+  offset terms in the formula. Offset terms supplied via the `offset` argument
+  are ignored by `mgcv:::predict.gam()` and hence are ignored also by `gratia`.
+  Reported by @jonathonmellor #231 #233
 
 # gratia 0.8.1
 

@@ -69,17 +69,6 @@
         valid_terms <- valid_terms[!(ord > 1)]
     }
 
-    # data combinations to get all parametric terms inc factor level combos
-    tbl <- data_combos(object, complete = FALSE)
-    # predict model contributions for the parametric terms, using only
-    # the factor combos in the data and typical values of all other terms
-    # and exclude the effects of smooths as they don't change anything in
-    # terms
-    # Work around a bug in predict.gam() with exclude length 0 character
-    # (i.e smooths(objects) when model contains only parametric terms)
-    pred <- predict(object, type = "terms",
-                    terms = mgcv_names, se.fit = TRUE,
-                    unconditional = unconditional)
     # try to recover the data
     mf <- model.frame(object)
     if (is.null(data)) {
@@ -88,6 +77,26 @@
     if (is.null(data)) {
         data <- mf
     }
+
+    # have to do predictions *after* we reconstruct the data otherwise we get
+    # problems if there were NAs in the original data.
+
+    # predict model contributions for the parametric terms, using only
+    # the factor combos in the data and typical values of all other terms
+    # and exclude the effects of smooths as they don't change anything in
+    # terms
+    # get the data that we need for the model; right now `data` could contain
+    # everything and be a model frame
+    data <- model.frame(object$pred.formula, data = data)
+    attr(data, "terms") <- NULL # squich this or predict.gam complains
+    # can limit the data combinations we predict at now by taking the unique
+    # data combos
+    data <- distinct(data)
+    # Work around a bug in predict.gam() with exclude length 0 character
+    # (i.e smooths(objects) when model contains only parametric terms)
+    pred <- predict(object, newdata = data, type = "terms",
+                    terms = mgcv_names, se.fit = TRUE,
+                    unconditional = unconditional)
 
     # loop over the valid_terms and prepare the parametric effects
     fun <- function(term, data, pred, vars) {
@@ -104,20 +113,28 @@
         } else {
             eval(term_expr, data, enclos = envir)
         }
+
         out <- bind_cols(level = x_data,
                          partial = pred[["fit"]][, term],
                          se = pred[["se.fit"]][, term]) |>
           distinct(.data$level, .keep_all = TRUE)
         nr <- nrow(out)
         is_fac <- is.factor(out$level)
+        type <- "factor"
         if (!is_fac) {
-            out <- out %>%
-              rename("value" = "level")
+            type <- class(out$level) # numeric but I presume logical too
+            out <- out |>
+                rename("value" = "level")
+        } else {
+            if (is.ordered(out$level)) {
+                type <- "ordered"
+            }
+            out <- out |>
+            mutate(level = as.character(.data$level))
         }
-        out <- out %>%
+        out <- out |>
           add_column(term = rep(term, times = nr),
-                     type = rep(if_else(is_fac, "factor", "numeric"),
-                                        times = nr),
+                     type = rep(type, times = nr),
                      .before = 1L) %>%
           nest(data = any_of(c("level", "value", "partial", "se")))
         out
@@ -127,7 +144,7 @@
         vars = vars)
 
     if (unnest) {
-        effects <- unnest(effects, cols = "data") %>%
+        effects <- unnest(effects, cols = "data") |>
           relocate(c("partial", "se"), .after = last_col())
     }
 
@@ -245,7 +262,8 @@ draw.parametric_effects <- function(object,
                                      angle = NULL,
                                      ...) {
     # plot
-    is_fac <- unique(object[["type"]]) == "factor"
+    type <- unique(object[["type"]])
+    is_fac <- type %in% c("ordered", "factor")
     x_val <- if_else(is_fac, "level", "value")
     term_label <- unique(object[["term"]])
 
@@ -293,7 +311,14 @@ draw.parametric_effects <- function(object,
         title <- term_label
     }
     if (is.null(caption)) {
-        caption <- paste("Parametric term")
+        # caption <- paste("Parametric term")
+        caption <- case_match(type,
+            "ordered" ~ "Ordered factor",
+            "factor" ~ "Factor",
+            "numeric" ~ "Numeric",
+            "logical" ~ "Logical",
+            .default = "Parametric term",
+            .ptype = character())
     }
 
     ## add labelling to plot
