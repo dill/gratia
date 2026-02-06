@@ -1,14 +1,13 @@
-This is a patch release of gratia that is largely motivated by the impending
-release of ggplot2 v4.0.0. This release fixes the issues observed when testing
-gratia with the release candidate of ggplot2.
-
-There was nothing to address on gratia's CRAN Check Results page.
+This is a patch release of gratia that is largely motivated by the issues on 
+gratia's CRAN Check Results page arising from breaking changes in the scam
+package. The new version also addresses the soft deprecation of `case_match()`
+in dplyr v 1.2.0 that was recently released.
 
 The package has been checked under:
 
 * r-devel on Windows via winbuilder,
-* r-devel on Windows, Ubuntu and MacOS X via GitHub Actions, and
-* r-release on MacOS X, ubuntu, and windows
+* r-devel on Ubuntu via GitHub Actions, and
+* r-release on MacOS X, ubuntu, and Windows
 
 No problems were observed. I note the `INFO` from `R CMD check` regarding the
 large number of imports; gratia is designed to work within the tidyverse of
