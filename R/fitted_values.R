@@ -127,7 +127,9 @@
     object, data, ci_level = 0.95,
     scale = "response", ...) {
   fit <- predict(object,
-    newdata = data, ..., type = "link",
+    newdata = data,
+    ...,
+    type = "link",
     se.fit = TRUE
   ) |>
     as.data.frame() |>
@@ -539,6 +541,68 @@
   fit
 }
 
+# Dave has added a clognorm family to mgcvUtils with a bespoke fitted_values
+# clone. Only difference with fit_vals_default is a pre-processing of fit
+# by `exp()`. Might be worth adding a pre_processing step if there are more
+# families like this?
+
+#' @importFrom rlang set_names .data
+#' @importFrom dplyr bind_cols mutate across
+#' @importFrom tibble as_tibble is_tibble
+#' @importFrom tidyselect any_of
+`fit_vals_clognorm` <- function(
+  object,
+  data,
+  ci_level = 0.95,
+  scale = "response",
+  ...
+) {
+  # get the transformation used
+  base <- attr(family(object), "base")
+  if(base == "e") { 
+    base <- exp(1)
+    trans <- exp
+  } else {
+    trans <- function(x) base^x
+  }
+
+  fit <- predict(object,
+    newdata = data,
+    ...,
+    type = "response",
+    se.fit = TRUE
+  ) |>
+    as.data.frame() |>
+    rlang::set_names(c(".fitted", ".se")) |>
+    as_tibble()|>
+    mutate(
+      .fitted = logb(.data[[".fitted"]], base = base)
+    )
+  # add .row *unless* it already exists
+  if (!".row" %in% names(data)) {
+    fit <- mutate(fit, .row = row_number())
+  }
+  fit <- bind_cols(data, fit) |>
+    relocate(".row", .before = 1L)
+
+  # create the confidence interval
+  crit <- coverage_normal(ci_level)
+  fit <- mutate(fit,
+    ".lower_ci" = .data[[".fitted"]] - (crit * .data[[".se"]]),
+    ".upper_ci" = .data[[".fitted"]] + (crit * .data[[".se"]])
+  )
+
+  # convert to the response scale if requested
+  if (identical(scale, "response")) {
+    fit <- fit |>
+      mutate(across(all_of(c(".fitted", ".lower_ci", ".upper_ci")),
+        .fns = trans
+      ))
+  }
+
+  fit
+}
+
 #' @importFrom dplyr case_when
 `get_fit_fun` <- function(fam) {
   fam <- case_when(
@@ -546,6 +610,7 @@
     grepl("^multivariate_normal", fam, ignore.case = TRUE) == TRUE ~ "mvn",
     grepl("^multinom", fam, ignore.case = TRUE) == TRUE ~ "multinom",
     grepl("^zero_inflated_poisson\\(", fam, ignore.case = TRUE) == TRUE ~ "zip",
+    grepl("^clog(e|[[:digit:]]+)norm", fam, ignore.case = TRUE) == TRUE ~ "clognorm",
     fam == "gaulss" ~ "general_lss",
     fam == "gammals" ~ "general_lss",
     fam == "gumbls" ~ "general_lss",
@@ -637,4 +702,4 @@
 #   .se = as.vector(fv$se.fit),
 #   .lower_ci = as.vector(fit_lwr),
 #   .upper_ci = as.vector(fit_upr)
-# )
+  # )

@@ -325,9 +325,9 @@ family_type.family <- function(object, ...) {
                                 inverse = FALSE, which_eta = NULL) {
   inverse <- as.logical(inverse)
   linfo <- object[["linfo"]]
-  distr <- object[["family"]] # name of the the family
+  distr <- family_name(object) # object[["family"]] # name of the the family
 
-  ## process distr for some familiee
+  ## process distr for some families
   distr <- case_when(
     grepl("^Negative Binomial", distr, ignore.case = TRUE) ~ "nb",
     grepl("^Tweedie", distr, ignore.case = TRUE) ~ "tweedie",
@@ -339,6 +339,7 @@ family_type.family <- function(object, ...) {
     grepl("^censored normal", distr, ignore.case = TRUE) ~ "cnorm",
     grepl("^cnorm", distr, ignore.case = TRUE) ~ "cnorm",
     grepl("^Multivariate normal", distr, ignore.case = TRUE) ~ "mvn",
+    grepl("^clog(e|[[:digit:]]+)norm", distr, ignore.case = TRUE) ~ "clognorm",
     .default = as.character(distr)
   )
 
@@ -382,6 +383,7 @@ family_type.family <- function(object, ...) {
       ),
       shash = shash_link(object, parameter, inverse = inverse),
       cnorm = cnorm_link(object, parameter, inverse = inverse),
+      clognorm = clognorm_link(object, parameter, inverse = inverse),
       elf   = elf_link(object, inverse = inverse)
     )
 
@@ -417,6 +419,20 @@ family_type.family <- function(object, ...) {
     grepl("^cnorm", family$family)
   )) {
     stop("'family' is not a censored normal family", call. = FALSE)
+  }
+
+  parameter <- match.arg(parameter)
+
+  extract_link(family, inverse = inverse)
+}
+
+`clognorm_link` <- function(
+  family,
+  parameter = c("location", "mu"),
+  inverse = FALSE
+) {
+  if (!grepl("^clog(e|[[:digit:]]+)norm", family$family)) {
+    stop("'family' is not a censored lognormal family", call. = FALSE)
   }
 
   parameter <- match.arg(parameter)
