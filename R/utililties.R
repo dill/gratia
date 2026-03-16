@@ -510,8 +510,31 @@ stop_if_not_mgcv_smooth <- function(smooth) {
   length(object[["smooth"]])
 }
 
-`get_vcov` <- function(object, unconditional = FALSE, frequentist = FALSE,
-                       term = NULL, by_level = NULL) {
+#' Extract the covariance matrix of the model parameters or a subset of these for
+#' a particular model term
+#'
+#' @param object an R object from which a covariance matrix shall be extracted.
+#' @param unconditional logical; if `TRUE` (and only if `frequentist == FALSE`)
+#'   then the bayesian smoothing parameter uncertainty-corrected covariance
+#'   matrix is returned, if available. Whether it is available depends on which
+#'   smoothness selection method was used to fit the model.
+#' @param frequentist logical; if `FALSE`, the default, the bayesian covariance
+#'   matrix is returned, otherwise the frequentist covariance matrix.
+#' @param term character, length 1; return the subset of the covariance matrix
+#'   for a particular **smooth** term. Only a single term can be selected.
+#' @param by_level character; currently unsued.
+#'
+#' @return a matrix containing the selected covariance matrix.
+#' @author Gavin L. Simpson
+#'
+#' @export
+`get_vcov` <- function(
+  object,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  term = NULL,
+  by_level = NULL
+) {
   V <- if (frequentist) {
     object$Ve
   } else if (unconditional) {

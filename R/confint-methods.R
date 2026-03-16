@@ -215,20 +215,20 @@
 #'   link function used to fit the model. Alternatively, the name of, or an
 #'   actual, function can be supplied to transform the smooth and it's
 #'   confidence interval.
-#' @param unconditional logical; if `TRUE` (and `freq == FALSE`) then the
-#'   Bayesian smoothing parameter uncertainty corrected covariance matrix is
-#'   returned, if available.
 #' @param ncores number of cores for generating random variables from a
 #'   multivariate normal distribution. Passed to [mvnfast::rmvn()].
 #'   Parallelization will take place only if OpenMP is supported (but appears
 #'   to work on Windows with current `R`).
 #' @param partial_match logical; should matching `parm` use a partial match or
 #'   an exact match? Can only be used if `length(parm)` is `1`.
-#' @param ... additional arguments for methods
+#' @param ... additional arguments for methods. Not used.
 #' @param newdata DEPRECATED! data frame; containing new values of the
 #'   covariates used in the model fit. The selected smooth(s) will be evaluated
 #'   at the supplied values.
 #'
+#' @inheritParams get_vcov
+#' @inheritParams smooth_estimates
+#' 
 #' @return a tibble with components:
 #' 1. `.smooth`; character indicating to which term each row relates,
 #' 2. `.type`; the type of smooth,
@@ -290,6 +290,7 @@
   transform = FALSE,
   unconditional = FALSE,
   frequentist = FALSE,
+  overall_uncertainty = TRUE,
   ncores = 1,
   partial_match = FALSE,
   ...,
@@ -354,7 +355,13 @@
     for (i in seq_along(out)) {
       out[[i]] <- smooth_estimates(object,
         select = uS[i],
-        n = n, data = data, partial_match = partial_match
+        n = n,
+        data = data,
+        partial_match = partial_match,
+        unconditional = unconditional,
+        frequentist = frequentist,
+        overall_uncertainty = overall_uncertainty,
+        ...
       )
       out[[i]][[".crit"]] <- coverage_normal(level)
     }

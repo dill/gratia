@@ -37,9 +37,10 @@ which to evaluate the smooth.}
 \item{data}{a data frame of covariate values at which to evaluate the
 smooth.}
 
-\item{unconditional}{logical; should confidence intervals include the
-uncertainty due to smoothness selection? If \code{TRUE}, the corrected Bayesian
-covariance matrix will be used.}
+\item{unconditional}{logical; if \code{TRUE} (and only if \code{frequentist == FALSE})
+then the bayesian smoothing parameter uncertainty-corrected covariance
+matrix is returned, if available. Whether it is available depends on which
+smoothness selection method was used to fit the model.}
 
 \item{overall_uncertainty}{logical; should the uncertainty in the model
 constant term be included in the standard error of the evaluate values of

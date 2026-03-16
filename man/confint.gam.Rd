@@ -17,6 +17,8 @@
   shift = FALSE,
   transform = FALSE,
   unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
   ncores = 1,
   partial_match = FALSE,
   ...,
@@ -56,9 +58,17 @@ link function used to fit the model. Alternatively, the name of, or an
 actual, function can be supplied to transform the smooth and it's
 confidence interval.}
 
-\item{unconditional}{logical; if \code{TRUE} (and \code{freq == FALSE}) then the
-Bayesian smoothing parameter uncertainty corrected covariance matrix is
-returned, if available.}
+\item{unconditional}{logical; if \code{TRUE} (and only if \code{frequentist == FALSE})
+then the bayesian smoothing parameter uncertainty-corrected covariance
+matrix is returned, if available. Whether it is available depends on which
+smoothness selection method was used to fit the model.}
+
+\item{frequentist}{logical; if \code{FALSE}, the default, the bayesian covariance
+matrix is returned, otherwise the frequentist covariance matrix.}
+
+\item{overall_uncertainty}{logical; should the uncertainty in the model
+constant term be included in the standard error of the evaluate values of
+the smooth?}
 
 \item{ncores}{number of cores for generating random variables from a
 multivariate normal distribution. Passed to \code{\link[mvnfast:rmvn]{mvnfast::rmvn()}}.
@@ -68,7 +78,7 @@ to work on Windows with current \code{R}).}
 \item{partial_match}{logical; should matching \code{parm} use a partial match or
 an exact match? Can only be used if \code{length(parm)} is \code{1}.}
 
-\item{...}{additional arguments for methods}
+\item{...}{additional arguments for methods. Not used.}
 
 \item{newdata}{DEPRECATED! data frame; containing new values of the
 covariates used in the model fit. The selected smooth(s) will be evaluated

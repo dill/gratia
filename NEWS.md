@@ -1,3 +1,14 @@
+# gratia (development version)
+
+## New features
+
+* The frequentist covariance matrix can now be selected in `confint.gam()` and
+  `smooth_estimates()` via argument `frequentist`. The default for this
+  argument remains `FALSE`, so behaviour is unchanged.
+
+* `get_vcov()` is now an exported function. `get_vcov()` extracts the
+  covariance matrix from a model object.
+
 # gratia 0.11.2
 
 ## User visible changes
