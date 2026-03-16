@@ -9,6 +9,8 @@
 * `get_vcov()` is now an exported function. `get_vcov()` extracts the
   covariance matrix from a model object.
 
+* The `clognorm()` family of the *mgcvUtils* 📦 is now supported by *gratia*.
+
 # gratia 0.11.2
 
 ## User visible changes
