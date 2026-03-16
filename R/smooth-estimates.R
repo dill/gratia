@@ -166,10 +166,11 @@
           sm, model = object, n = n, n_3d = n_3d, n_4d = n_4d,
           data = data, unconditional = unconditional,
           frequentist = frequentist,
-          overall_uncertainty = overall_uncertainty, dist = dist
+          overall_uncertainty = overall_uncertainty, dist = dist,
+          clip = clip
         ),
         object = object, n = n, n_3d = n_3d, n_4d = n_4d, data = data,
-        unconditional = unconditional,
+        unconditional = unconditional, frequentist = frequentist,
         overall_uncertainty = overall_uncertainty, dist = dist, clip = clip,
         eval_smooth = gratia::eval_smooth
       )
@@ -332,8 +333,12 @@
 #' @importFrom mgcv PredictMat inSide
 #' @export
 `spline_values` <- function(
-    smooth, data, model, unconditional,
-    overall_uncertainty = TRUE, frequentist = FALSE) {
+    smooth,
+    data,
+    model,
+    unconditional,
+    overall_uncertainty = TRUE,
+    frequentist = FALSE) {
   is_soap <- is_soap_film(smooth)
   X <- PredictMat(smooth, data) # prediction matrix
   offset <- attr(X, "offset")
@@ -351,7 +356,11 @@
   label <- smooth_label(smooth)
 
   ## want full vcov for component-wise CI
-  V <- get_vcov(model, unconditional = unconditional)
+  V <- get_vcov(
+    model,
+    unconditional = unconditional,
+    frequentist = frequentist
+  )
 
   ## variables for component-wise CIs for smooths
   column_means <- model[["cmX"]]
