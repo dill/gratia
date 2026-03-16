@@ -23,9 +23,6 @@
 #'   behaviour (using `n` for all dimensions) will be observed.
 #' @param data a data frame of covariate values at which to evaluate the
 #'   smooth.
-#' @param unconditional logical; should confidence intervals include the
-#'   uncertainty due to smoothness selection? If `TRUE`, the corrected Bayesian
-#'   covariance matrix will be used.
 #' @param overall_uncertainty logical; should the uncertainty in the model
 #'  constant term be included in the standard error of the evaluate values of
 #'  the smooth?
@@ -48,6 +45,8 @@
 #' @export
 #'
 #' @rdname smooth_estimates
+#' 
+#' @inheritParams get_vcov
 #'
 #' @examples
 #' load_mgcv()
@@ -92,6 +91,7 @@
     n_4d = 4,
     data = NULL,
     unconditional = FALSE,
+    frequentist = FALSE,
     overall_uncertainty = TRUE,
     dist = NULL,
     unnest = TRUE,
@@ -147,9 +147,16 @@
     sm_list <- map(
       smooths,
       eval_smooth,
-      model = object, n = n, n_3d = n_3d, n_4d = n_4d, data = data,
+      model = object,
+      n = n,
+      n_3d = n_3d,
+      n_4d = n_4d,
+      data = data,
       unconditional = unconditional,
-      overall_uncertainty = overall_uncertainty, dist = dist, clip = clip
+      frequentist = frequentist,
+      overall_uncertainty = overall_uncertainty,
+      dist = dist,
+      clip = clip
     )
   } else {
     sm_list <- map(
@@ -158,6 +165,7 @@
         \(sm) eval_smooth(
           sm, model = object, n = n, n_3d = n_3d, n_4d = n_4d,
           data = data, unconditional = unconditional,
+          frequentist = frequentist,
           overall_uncertainty = overall_uncertainty, dist = dist
         ),
         object = object, n = n, n_3d = n_3d, n_4d = n_4d, data = data,
@@ -313,7 +321,6 @@
 #' @param model a fitted model; currently only [mgcv::gam()] and [mgcv::bam()]
 #'   models are supported.
 #' @param data a data frame of values to evaluate `smooth` at.
-#' @param frequentist logical; use the frequentist covariance matrix?
 #'
 #' @inheritParams eval_smooth
 #'
@@ -407,7 +414,6 @@
 #' @param model a fitted model; currently only [mgcv::gam()] and [mgcv::bam()]
 #'   models are supported.
 #' @param data an optional data frame of values to evaluate `smooth` at.
-#' @param frequentist logical; use the frequentist covariance matrix?
 #'
 #' @inheritParams eval_smooth
 #'
@@ -502,6 +508,7 @@
 #' @param ... arguments passed to other methods
 #'
 #' @inheritParams smooth_estimates
+#' @inheritParams get_vcov
 #'
 #' @export
 `eval_smooth` <- function(smooth, ...) {
@@ -517,6 +524,7 @@
                                       n_4d = NULL,
                                       data = NULL,
                                       unconditional = FALSE,
+                                      frequentist = FALSE,
                                       overall_uncertainty = TRUE,
                                       dist = NULL,
                                       ...) {
@@ -540,7 +548,8 @@
     data = data,
     unconditional = unconditional,
     model = model,
-    overall_uncertainty = overall_uncertainty
+    overall_uncertainty = overall_uncertainty,
+    frequentist = frequentist
   )
 
   ## add on info regarding by variable
@@ -573,6 +582,7 @@
   n_4d = NULL,
   data = NULL,
   unconditional = FALSE,
+  frequentist = FALSE,
   overall_uncertainty = TRUE,
   clip = TRUE, # ?hmm thinking
   ...
@@ -620,11 +630,13 @@
   }
 
   ## values of spline at data
-  eval_sm <- spline_values(smooth,
+  eval_sm <- spline_values(
+    smooth,
     data = data,
     unconditional = unconditional,
     model = model,
-    overall_uncertainty = overall_uncertainty
+    overall_uncertainty = overall_uncertainty,
+    frequentist = frequentist
   )
 
   ## add on info regarding by variable
@@ -672,6 +684,7 @@
                                       n_4d = NULL,
                                       data = NULL,
                                       unconditional = FALSE,
+                                      frequentist = FALSE,
                                       overall_uncertainty = TRUE,
                                       dist = NULL,
                                       ...) {
@@ -690,7 +703,8 @@
   ## values of spline at data
   eval_sm <- spline_values_scam(smooth,
     data = data, model = model,
-    overall_uncertainty = overall_uncertainty
+    overall_uncertainty = overall_uncertainty,
+    frequentist = frequentist
   )
 
   ## add on info regarding by variable
@@ -760,10 +774,16 @@
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.fs.interaction` <- function(smooth, model, n = 100, data = NULL,
-                                         unconditional = FALSE,
-                                         overall_uncertainty = TRUE,
-                                         ...) {
+`eval_smooth.fs.interaction` <- function(
+  smooth,
+  model,
+  n = 100,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  ...
+) {
   by_var <- by_variable(smooth) # even if not a by as we want NA later
   if (by_var == "NA") {
     by_var <- NA_character_
@@ -789,7 +809,8 @@
     data = data,
     unconditional = unconditional,
     model = model,
-    overall_uncertainty = overall_uncertainty
+    overall_uncertainty = overall_uncertainty,
+    frequentist = frequentist
   )
 
   ## add on info regarding by variable
@@ -804,10 +825,16 @@
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.sz.interaction` <- function(smooth, model, n = 100, data = NULL,
-                                         unconditional = FALSE,
-                                         overall_uncertainty = TRUE,
-                                         ...) {
+`eval_smooth.sz.interaction` <- function(
+  smooth,
+  model,
+  n = 100,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  ...
+) {
   by_var <- by_variable(smooth) # even if not a by as we want NA later
   if (by_var == "NA") {
     by_var <- NA_character_
@@ -825,6 +852,7 @@
   eval_sm <- spline_values(smooth,
     data = data,
     unconditional = unconditional,
+    frequentist = frequentist,
     model = model,
     overall_uncertainty = overall_uncertainty
   )
@@ -840,10 +868,16 @@
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.random.effect` <- function(smooth, model, n = 100, data = NULL,
-                                        unconditional = FALSE,
-                                        overall_uncertainty = TRUE,
-                                        ...) {
+`eval_smooth.random.effect` <- function(
+  smooth,
+  model,
+  n = 100,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  ...
+) {
   by_var <- by_variable(smooth) # even if not a by as we want NA later
   if (by_var == "NA") {
     by_var <- NA_character_
@@ -861,6 +895,7 @@
   eval_sm <- spline_values(smooth,
     data = data,
     unconditional = unconditional,
+    frequentist = frequentist,
     model = model,
     overall_uncertainty = overall_uncertainty
   )
@@ -876,25 +911,34 @@
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.mrf.smooth` <- function(smooth, model, n = 100, data = NULL,
-                                     unconditional = FALSE,
-                                     overall_uncertainty = TRUE,
-                                     ...) {
+`eval_smooth.mrf.smooth` <- function(
+  smooth,
+  model,
+  n = 100,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  ...) {
   .NotYetImplemented()
 }
 
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.t2.smooth` <- function(smooth, model,
-                                    n = 100,
-                                    n_3d = NULL,
-                                    n_4d = NULL,
-                                    data = NULL,
-                                    unconditional = FALSE,
-                                    overall_uncertainty = TRUE,
-                                    dist = NULL,
-                                    ...) {
+`eval_smooth.t2.smooth` <- function(
+  smooth,
+  model,
+  n = 100,
+  n_3d = NULL,
+  n_4d = NULL,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  dist = NULL,
+  ...
+) {
   by_var <- by_variable(smooth) # even if not a by as we want NA later
   if (by_var == "NA") {
     by_var <- NA_character_
@@ -915,6 +959,7 @@
   eval_sm <- spline_values(smooth,
     data = data,
     unconditional = unconditional,
+    frequentist = frequentist,
     model = model,
     overall_uncertainty = overall_uncertainty
   )
@@ -948,15 +993,18 @@
 #' @rdname eval_smooth
 #' @export
 #' @importFrom tibble add_column
-`eval_smooth.tensor.smooth` <- function(smooth, model,
-                                        n = 100,
-                                        n_3d = NULL,
-                                        n_4d = NULL,
-                                        data = NULL,
-                                        unconditional = FALSE,
-                                        overall_uncertainty = TRUE,
-                                        dist = NULL,
-                                        ...) {
+`eval_smooth.tensor.smooth` <- function(
+  smooth,
+  model,
+  n = 100,
+  n_3d = NULL,
+  n_4d = NULL,
+  data = NULL,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  overall_uncertainty = TRUE,
+  dist = NULL,
+  ...) {
   by_var <- by_variable(smooth) # even if not a by as we want NA later
   if (by_var == "NA") {
     by_var <- NA_character_
@@ -977,6 +1025,7 @@
   eval_sm <- spline_values(smooth,
     data = data,
     unconditional = unconditional,
+    frequentist = frequentist,
     model = model,
     overall_uncertainty = overall_uncertainty
   )
