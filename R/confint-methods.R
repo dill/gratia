@@ -229,6 +229,9 @@
 #' @inheritParams get_vcov
 #' @inheritParams smooth_estimates
 #' 
+#' @note Currently, `overall_uncertainty` only applies to confidence intervals
+#'   (`type = "confidence"`), not simultaneous intervals.
+#' 
 #' @return a tibble with components:
 #' 1. `.smooth`; character indicating to which term each row relates,
 #' 2. `.type`; the type of smooth,

@@ -104,6 +104,10 @@ per the variables in the smooth,
 Calculates point-wise confidence or simultaneous intervals for the smooth
 terms of a fitted GAM.
 }
+\note{
+Currently, \code{overall_uncertainty} only applies to confidence intervals
+(\code{type = "confidence"}), not simultaneous intervals.
+}
 \examples{
 load_mgcv()
 \dontshow{
