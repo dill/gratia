@@ -278,12 +278,23 @@
 #' \dontshow{
 #' options(op)
 #' }
-`confint.gam` <- function(object, parm, level = 0.95, data = newdata, n = 100,
-                          type = c("confidence", "simultaneous"), nsim = 10000,
-                          shift = FALSE, transform = FALSE,
-                          unconditional = FALSE,
-                          ncores = 1, partial_match = FALSE,
-                          ..., newdata = NULL) {
+`confint.gam` <- function(
+  object,
+  parm,
+  level = 0.95,
+  data = newdata,
+  n = 100,
+  type = c("confidence", "simultaneous"),
+  nsim = 10000,
+  shift = FALSE,
+  transform = FALSE,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  ncores = 1,
+  partial_match = FALSE,
+  ...,
+  newdata = NULL
+) {
   S <- smooths(object)
   ## select smooths
   select <- check_user_select_smooths(
@@ -364,7 +375,7 @@
       unname(quantile(masd, probs = level, type = 8))
     }
     ## need VCOV for simultaneous intervals
-    V <- get_vcov(object, unconditional = unconditional)
+    V <- get_vcov(object, unconditional = unconditional, frequentist = frequentist)
     ## simulate un-biased deviations given bayesian covar matrix
     buDiff <- mvnfast::rmvn(
       n = nsim, mu = rep(0, nrow(V)), sigma = V,
