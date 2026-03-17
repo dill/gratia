@@ -224,11 +224,40 @@ test_that("link() works for cox.ph() family objects", {
   expect_identical(f, cox.ph()$linkfun)
 })
 
+test_that("link() works for clog() family objects", {
+  f <- link(clog())
+  expect_type(f, "closure")
+  expect_identical(f(val), val)
+  expect_identical(f, clog()$linkfun)
+})
+
+test_that("link() works for cpois() family objects", {
+  f <- link(cpois())
+  expect_type(f, "closure")
+  expect_identical(f(val), cpois()$linkfun(val))
+  expect_identical(f, cpois()$linkfun)
+})
+
+test_that("link() works for bcg() family objects", {
+  f <- link(bcg())
+  expect_type(f, "closure")
+  expect_identical(f(val), val)
+  expect_identical(f, bcg()$linkfun)
+})
+
 test_that("link() works for cnorm() family objects", {
   f <- link(cnorm())
   expect_type(f, "closure")
   expect_identical(f(val), val)
   expect_identical(f, cnorm()$linkfun)
+})
+
+test_that("link() works for clognorm() family objects", {
+  skip_if_not_installed("mgcvUtils")
+  f <- link(mgcvUtils::clognorm())
+  expect_type(f, "closure")
+  expect_identical(f(val), mgcvUtils::clognorm()$linkfun(val))
+  expect_identical(f, mgcvUtils::clognorm()$linkfun)
 })
 
 ## inv_link
