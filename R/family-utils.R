@@ -338,6 +338,7 @@ family_type.family <- function(object, ...) {
     grepl("^Cox PH", distr, ignore.case = TRUE) ~ "cox_ph",
     grepl("^censored normal", distr, ignore.case = TRUE) ~ "cnorm",
     grepl("^cnorm", distr, ignore.case = TRUE) ~ "cnorm",
+    grepl("^clog\\(", distr, ignore.case = TRUE) ~ "clog",
     grepl("^Multivariate normal", distr, ignore.case = TRUE) ~ "mvn",
     grepl("^clog(e|[[:digit:]]+)norm", distr, ignore.case = TRUE) ~ "clognorm",
     .default = as.character(distr)
@@ -383,7 +384,9 @@ family_type.family <- function(object, ...) {
       ),
       shash = shash_link(object, parameter, inverse = inverse),
       cnorm = cnorm_link(object, parameter, inverse = inverse),
+      clog = clog_link(object, parameter, inverse = inverse),
       clognorm = clognorm_link(object, parameter, inverse = inverse),
+      cpois = cpois_link(object, parameter, inverse = inverse),
       elf   = elf_link(object, inverse = inverse)
     )
 
@@ -419,6 +422,29 @@ family_type.family <- function(object, ...) {
     grepl("^cnorm", family$family)
   )) {
     stop("'family' is not a censored normal family", call. = FALSE)
+  }
+
+  parameter <- match.arg(parameter)
+
+  extract_link(family, inverse = inverse)
+}
+
+`clog_link` <- function(
+  family, parameter = c("location", "mu"), inverse = FALSE
+) {
+  if (grepl("^cnorm\\(", family$family)) {
+    stop("'family' is not a censored logistic family", call. = FALSE)
+  }
+
+  parameter <- match.arg(parameter)
+
+  extract_link(family, inverse = inverse)
+}
+
+`cpois_link` <- function(family, parameter = c("location", "mu"),
+                         inverse = FALSE) {
+  if (!grepl("^cpois$", family$family)) {
+    stop("'family' is not a censored poisson family", call. = FALSE)
   }
 
   parameter <- match.arg(parameter)
