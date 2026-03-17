@@ -16,8 +16,9 @@
   smooths (`s(x1, x2)`, `te(x1, x2)`, `ti(x1, x2)`, and `t2(x1, x2)` or higher)
   and random effects smooths. #389 Reported by @mikeguggis in #362
 
-* Support for `cpois()` and `clog()` families in `link()`, `inv_link()` and
-  other family-related utilities.
+* Support for `cpois()`, `clog()`, and `bcg()` families in `link()`, `inv_link()`
+  and other family-related utilities. These all work with `fitted_values()` now
+  too.
 
 # gratia 0.11.2
 
