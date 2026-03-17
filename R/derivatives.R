@@ -71,6 +71,7 @@
 #' @importFrom tidyselect last_col
 #' @importFrom lifecycle deprecated is_present
 #' @importFrom vctrs vec_slice
+#' @importFrom cli cli_abort cli_alert_info
 #'
 #' @rdname derivatives
 #'
@@ -107,23 +108,26 @@
 #' \dontshow{
 #' options(op)
 #' }
-`derivatives.gam` <- function(object,
-    select = NULL,
-    term = deprecated(),
-    data = newdata,
-    order = 1L,
-    type = c("forward", "backward", "central"),
-    n = 100,
-    eps = 1e-7,
-    interval = c("confidence", "simultaneous"),
-    n_sim = 10000,
-    level = 0.95,
-    unconditional = FALSE,
-    frequentist = FALSE,
-    offset = NULL,
-    ncores = 1,
-    partial_match = FALSE,
-    ..., newdata = NULL) {
+`derivatives.gam` <- function(
+  object,
+  select = NULL,
+  term = deprecated(),
+  data = newdata,
+  order = 1L,
+  type = c("forward", "backward", "central"),
+  n = 100,
+  eps = 1e-7,
+  interval = c("confidence", "simultaneous"),
+  n_sim = 10000,
+  level = 0.95,
+  unconditional = FALSE,
+  frequentist = FALSE,
+  offset = NULL,
+  ncores = 1,
+  partial_match = FALSE,
+  ...,
+  newdata = NULL
+) {
   if (lifecycle::is_present(term)) {
     lifecycle::deprecate_warn("0.8.9.9", "derivatives(term)",
       "derivativess(select)")
@@ -170,6 +174,48 @@
 
   ## handle interval
   interval <- match.arg(interval)
+
+  # we only do derivatives with this function for univariate smooths
+  # check the dimensionality here, drop any sm with dim > 1,
+  # display a message if we drop any, throw error if we can't do anything
+  sm_dims <- vapply(
+    get_smooths_by_id(object, smooth_ids),
+    FUN = smooth_dim,
+    FUN.VALUE = numeric(1L)
+  )
+  not_multivar <- c("sz.interaction")
+  sm_class <- vapply(
+    get_smooths_by_id(object, smooth_ids),
+    FUN = \(x) inherits(x, not_multivar),
+    FUN.VALUE = logical(1L)
+  )
+  chk_multivar <- (sm_dims > 1L) & (!sm_class)
+  if (any(chk_multivar)) {
+    if (all(chk_multivar)) {
+      cli_abort(
+        c(
+          "Can't compute derivatives for any smooths in {.var {deparse(substitute(object))}}.",
+          "x" = "All smooths are either random effects or multivariate",
+          "!" = "See {.fun partial_derivatives} for one solution for multivariate smooths."
+        )
+      )
+    } else {
+      sm_labs <- vapply(
+        get_smooths_by_id(object, smooth_ids),
+        FUN = smooth_label,
+        FUN.VALUE = character(1L)
+      )
+      sm_labs <- sm_labs[chk_multivar]
+      cli_alert_info("Can't compute derivatives of multivariate smooths")
+      cli_alert_info("Ignoring: {.val {sm_labs}}")
+      cli_alert_info(
+        "See {.fun partial_derivatives} for a solution."
+      )
+    }
+  }
+
+  # filter out more smooths that we can't handle
+  smooth_ids <- smooth_ids[!chk_multivar]
 
   ## get the required covariance matrix
   Vb <- get_vcov(object,
@@ -893,12 +939,14 @@
     if (isFALSE(identical(n_focal, n_sm))) {
       sm_names <- smooths(object)[smooth_ids]
       msg <- paste(sm_names, collapse = ", ")
-      cli_abort(c(
-        "!" = "{.var focal} must have same length as number of chosen smooths",
-        "i" = "The relevant smooths are: {sm_names}",
-        "i" = "The supplied {.var focal} should be length: {.strong {n_sm}}",
-        "x" = "Your supplied {.var focal} was length: {.strong {length(focal)}}"
-      ))
+      cli_abort(
+        c(
+          "!" = "{.var focal} must have same length as number of chosen smooths",
+          "i" = "The relevant smooths are: {sm_names}",
+          "i" = "The supplied {.var focal} should be length: {.strong {n_sm}}",
+          "x" = "Your supplied {.var focal} was length: {.strong {length(focal)}}"
+        )
+      )
     }
   }
 

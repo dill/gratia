@@ -544,3 +544,16 @@ test_that("derivatives works for sz smooths", {
   skip_on_ci()
   expect_snapshot(print(d))
 })
+
+test_that("derivatives gives nice alerts for multivariate smooths", {
+  d_dat <- withr::with_seed(
+    2026-03-17, data_sim("eg1")
+  )
+  expect_snapshot(
+    derivatives(gam(y ~ s(x0) + s(x1, x2), data = d_dat))
+  )
+  expect_snapshot(
+    derivatives(gam(y ~ s(x1, x2), data = d_dat)),
+    error = TRUE
+  )
+})
