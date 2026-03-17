@@ -11,6 +11,11 @@
 
 * The `clognorm()` family of the *mgcvUtils* 📦 is now supported by *gratia*.
 
+* `derivatives.gam()` now produces an informative message or error when some or
+  all of the smooths in a model can not be handled — essentially, multivariate
+  smooths (`s(x1, x2)`, `te(x1, x2)`, `ti(x1, x2)`, and `t2(x1, x2)` or higher)
+  and random effects smooths. #389 Reported by @mikeguggis in #362 
+
 # gratia 0.11.2
 
 ## User visible changes
