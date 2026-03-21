@@ -1,6 +1,7 @@
 # uses su_eg2 & su_m_bivar_te
 
 # setup
+n <- 200
 df <- withr::with_seed(
   seed = 123,
   data.frame(
@@ -69,4 +70,9 @@ test_that("partial derivatives throws error with incorrect focal", {
     partial_derivatives(m_partial_deriv, focal = rep("x1", 1L)),
     error = TRUE
   )
+})
+
+test_that("partial derivatives works when focal is not set #390", {
+  expect_silent(pd <- partial_derivatives(su_m_bivar))
+  expect_error(pd <- partial_derivatives(m_gam))
 })
