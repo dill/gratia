@@ -909,18 +909,37 @@
     logical(1)
   )
   # need to check that the selected smooths are multivariate
-  mv_sm <- vapply(object$smooth[smooth_ids], smooth_dim, integer(1)) < 2L
+  uv_sm <- vapply(object$smooth[smooth_ids], smooth_dim, integer(1)) < 2L
   # report of ignoring any smooths
-  if (any(take, mv_sm)) {
-    cat("\n")
+  if (any(take | uv_sm)) {
+    #cat("\n")
+    #cli_alert_warning(
+    #  "Ignoring univariate smooths & those involving random effects.\n\n",
+    #  wrap = TRUE
+    #)
+    #cat("\n")
+    uv_re_warn_msg <- "Ignoring univariate smooths & those involving random effects."
+  }
+  smooth_ids <- smooth_ids[!(take | uv_sm)]
+  n_sm <- length(smooth_ids)
+
+  # are there any smooths left? If not, throw and error and abort
+  if (n_sm < 1L) {
+    cli_abort(
+      c(
+        "x" = "No suitable smooths available for partial derivatives.",
+        "!" = uv_re_warn_msg,
+        "i" = "{.fun partial_derivatives} is only suitable for multivariate smooths",
+        "i" = "Only smooths of forms {.code s(x,z)} or {.code te(x,z,w)} (incl. {.fun ti} or {.fun t2})",
+        " " = "for two or more continuous variables are supported."
+      )
+    )
+  } else if (any(take | uv_sm)) {
     cli_alert_warning(
-      "Ignoring univariate smooths & those involving random effects.\n\n",
+      "Ignoring univariate smooths & those involving random effects.",
       wrap = TRUE
     )
-    cat("\n")
   }
-  smooth_ids <- smooth_ids[!(take | mv_sm)]
-  n_sm <- length(smooth_ids)
 
   # handle focal - it should be a vector as long as the number of smooths
   # we are handling. If it is NULL, then we loop over the smooths, extract
