@@ -920,6 +920,7 @@
     cat("\n")
   }
   smooth_ids <- smooth_ids[!(take | mv_sm)]
+  n_sm <- length(smooth_ids)
 
   # handle focal - it should be a vector as long as the number of smooths
   # we are handling. If it is NULL, then we loop over the smooths, extract
@@ -935,7 +936,6 @@
     # if not NULL then we should check that it is of the same length as the
     # smooths we are evaluating
     n_focal <- length(focal)
-    n_sm <- length(smooth_ids)
     if (isFALSE(identical(n_focal, n_sm))) {
       sm_names <- smooths(object)[smooth_ids]
       msg <- paste(sm_names, collapse = ", ")
