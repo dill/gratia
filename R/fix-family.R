@@ -88,11 +88,6 @@
   # add the CDF fun to the family
   family$cdf <- qfun
 
-  # don't think we need to throw and error - fix.family.rd doesn't
-  #if (is.null(family$cdf)) {
-  #  stop("No CDF functions available for this family")
-  #}
-
   # return
   family
 }
@@ -204,5 +199,50 @@
       phi = scale, # think to handle weights we need scale / wt
       xi = xi
     )
+  }
+}
+
+# only really need this for QQ plots
+`fix_family_qf` <- function(family) {
+  # if `family` contains a NULL qf we move on, if it is non-null return early
+  # as it doesn't need fixing
+  if (!is.null(family$qf)) {
+    return(family)
+  }
+
+  # handle special cases
+  ft <- family_type(family)
+  theta <- NULL
+  if (has_theta(family)) {
+    transf <- TRUE
+    if (ft %in% c("tweedie")) { # which don't need transform?
+      transf <- FALSE
+    }
+    theta <- theta(family, transform = transf)
+  }
+
+  # choose a CDF functions
+  qfun <- switch(
+    EXPR = ft,
+    "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
+    NULL
+  )
+
+  # add the CDF fun to the family
+  family$qf <- qfun
+
+  # return
+  family
+}
+
+#' @importFrom stats pt
+`make_qf_scat` <- function(nu, sigma) {
+  function(p, mu, wt, scale, log_p = FALSE) {
+    qt(
+      p,
+      df = nu,
+      lower.tail = TRUE,
+      log.p = log_p
+    ) * sigma + mu
   }
 }
