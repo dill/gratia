@@ -155,8 +155,8 @@
     message("`method = \"direct\"` is deprecated, use `\"uniform\"`")
     method <- "uniform"
   }
-  ## check if we can do the method
-  ff_qf <- fix.family.qf(family(model))[["qf"]]
+  ## check if we can do the uniform method - needs a quantile fun
+  ff_qf <- fix_family_qf(family(model))[["qf"]]
   if (identical(method, "uniform") && is.null(ff_qf)) {
     method <- "simulate"
   }
