@@ -210,7 +210,10 @@
     return(family)
   }
 
-  # handle special cases
+  # handle special cases - mgcv uses theta as a catchall vector of extra params
+  # for some families. If a family has one or more of these they need to be
+  # embedded in the qf function.
+  # Here we grab theta and decide if it needs transforming
   ft <- family_type(family)
   theta <- NULL
   if (has_theta(family)) {
@@ -221,14 +224,17 @@
     theta <- theta(family, transform = transf)
   }
 
-  # choose a CDF functions
+  # choose QF functions - this is where we explicitly handle the special
+  # families; they need a make_qf_foo function, while normal families
+  # with no extra parameters just need a qf_foo function
   qfun <- switch(
     EXPR = ft,
     "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
-    NULL
+    "tweedie"  = make_qf_tw(theta, ab = get_tw_ab(family)),
+    NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
-  # add the CDF fun to the family
+  # add the QF fun to the family
   family$qf <- qfun
 
   # return
@@ -244,5 +250,25 @@
       lower.tail = TRUE,
       log.p = log_p
     ) * sigma + mu
+  }
+}
+
+#' @importFrom tweedie qtweedie
+`make_qf_tw` <- function(theta, ab) {
+  function(p, mu, wt, scale, log_p = FALSE) {
+    a <- ab[1] # tweedie lower and upper bounds used in fitting
+    b <- ab[2]
+    # compute tweedie power parameter xi
+    xi <- if (theta > 0) {
+      (b + a * exp(-theta)) / (1 + exp(-theta))
+    } else {
+      (b * exp(theta) + a) / (exp(theta) + 1)
+    }
+    tweedie::qtweedie(
+      p,
+      mu = mu,
+      phi = scale, # think to handle weights we need scale / wt
+      xi = xi
+    )
   }
 }
