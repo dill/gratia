@@ -44,7 +44,7 @@
         )
       }
     }
-    tw_pars <- get_tw_ab(fam)
+    tw_pars <- get_tw_params(fam)
     fam$rd <- rd_twlss(a = tw_pars[1], b = tw_pars[2])
   }
 
@@ -71,7 +71,7 @@
   }
 
   # choose a CDF functions
-  qfun <- switch(
+  cdf_fun <- switch(
     EXPR = ft,
     "poisson"  = cdf_poisson,
     "gaussian" = cdf_gaussian,
@@ -81,12 +81,12 @@
     "negative_binomial" = make_cdf_nb(theta),
     ## "inverse_gaussian"  = cdf_invgaussian, # FIXME: not sure I trust this yet
     "beta_regression"   = make_cdf_beta(theta),
-    "tweedie"  = make_cdf_tw(theta, ab = get_tw_ab(family)),
+    "tweedie"  = make_cdf_tw(theta, ab = get_tw_params(family)),
     NULL
   )
 
   # add the CDF fun to the family
-  family$cdf <- qfun
+  family$cdf <- cdf_fun
 
   # return
   family
@@ -184,22 +184,43 @@
 
 #' @importFrom tweedie ptweedie
 `make_cdf_tw` <- function(theta, ab) {
-  function(q, mu, wt, scale, log_p = FALSE) {
-    a <- ab[1] # tweedie lower and upper bounds used in fitting
-    b <- ab[2]
-    # compute tweedie power parameter xi
-    xi <- if (theta > 0) {
-      (b + a * exp(-theta)) / (1 + exp(-theta))
-    } else {
-      (b * exp(theta) + a) / (exp(theta) + 1)
+  fun <- if (length(ab) == 1L) {
+    # here ab is the tweedie power specified in Tweedie()
+    function(p, mu, wt, scale, log_p = FALSE){
+      tweedie::ptweedie(
+        p,
+        mu = mu,
+        phi = scale,
+        xi = ab
+      )
     }
-    tweedie::ptweedie(
-      q,
-      mu = mu,
-      phi = scale, # think to handle weights we need scale / wt
-      xi = xi
-    )
+  } else {
+    function(q, mu, wt, scale, log_p = FALSE) {
+      a <- ab[1] # tweedie lower and upper bounds used in fitting
+      b <- ab[2]
+      # compute tweedie power parameter xi
+      xi <- if (theta > 0) {
+        (b + a * exp(-theta)) / (1 + exp(-theta))
+      } else {
+        (b * exp(theta) + a) / (exp(theta) + 1)
+      }
+      tweedie::ptweedie(
+        q,
+        mu = mu,
+        phi = scale, # think to handle weights we need scale / wt
+        xi = xi
+      )
+    }
   }
+  fun
+}
+
+#' @importFrom stats pnorm
+`cdf_gaussian` <- function(q, mu, wt, scale, log_p = FALSE) {
+  pnorm(
+    q, mean = mu[, 1, drop = TRUE],
+    sd = 1 / mu[, 2, drop = TRUE], log.p = log_p
+  )
 }
 
 # only really need this for QQ plots
@@ -236,7 +257,7 @@
   qfun <- switch(
     EXPR = ft,
     "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
-    "tweedie"  = make_qf_tw(theta, ab = get_tw_ab(family)),
+    "tweedie"  = make_qf_tw(theta, ab = get_tw_params(family)),
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -245,6 +266,15 @@
 
   # return
   family
+}
+
+
+#' @importFrom stats qnorm
+`qf_gaussian` <- function(q, mu, wt, scale, log_p = FALSE) {
+  qnorm(
+    p, mean = mu[, 1, drop = TRUE],
+    sd = 1 / mu[, 2, drop = TRUE], log.p = log_p
+  )
 }
 
 #' @importFrom stats pt
@@ -261,20 +291,33 @@
 
 #' @importFrom tweedie qtweedie
 `make_qf_tw` <- function(theta, ab) {
-  function(p, mu, wt, scale, log_p = FALSE) {
-    a <- ab[1] # tweedie lower and upper bounds used in fitting
-    b <- ab[2]
-    # compute tweedie power parameter xi
-    xi <- if (theta > 0) {
-      (b + a * exp(-theta)) / (1 + exp(-theta))
-    } else {
-      (b * exp(theta) + a) / (exp(theta) + 1)
+  fun <- if (length(ab) == 1L) {
+    # here ab is the tweedie power specified in Tweedie()
+    function(p, mu, wt, scale, log_p = FALSE){
+      tweedie::qtweedie(
+        p,
+        mu = mu,
+        phi = scale,
+        xi = ab
+      )
     }
-    tweedie::qtweedie(
-      p,
-      mu = mu,
-      phi = scale, # think to handle weights we need scale / wt
-      xi = xi
-    )
+  } else {
+    function(p, mu, wt, scale, log_p = FALSE) {
+      a <- ab[1] # tweedie lower and upper bounds used in fitting
+      b <- ab[2]
+      # compute tweedie power parameter xi
+      xi <- if (theta > 0) {
+        (b + a * exp(-theta)) / (1 + exp(-theta))
+      } else {
+        (b * exp(theta) + a) / (exp(theta) + 1)
+      }
+      tweedie::qtweedie(
+        p,
+        mu = mu,
+        phi = scale, # think to handle weights we need scale / wt
+        xi = xi
+      )
+    }
   }
+  fun
 }
