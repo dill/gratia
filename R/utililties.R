@@ -1897,11 +1897,18 @@ theta_2_power <- function(theta, a, b) {
 
 # extracts the `a` and `b` parameters of the model search over which the power
 # parameter is searched for
-get_tw_ab <- function(family) {
+get_tw_params <- function(family) {
+  # check if family is at least a Tweedie
   ft <- family_type(family)
   if (!ft %in% c("twlss", "tweedie")) {
     stop("'model' wasn't fitted with a Tweedie family.", call. = FALSE)
   }
+  # if this is a Tweedie(x.x) return p from env of family,
+  # so we can catch this later
+  if (grepl("^ Tweedie\\(", family_name(family))) {
+    return(get("p", envir = environment(family$rd)))
+  }
+  # so it is a tweedie but not Tweedie, so tw
   rfun <- if (identical(ft, "twlss")) {
     family$residuals
   } else {
