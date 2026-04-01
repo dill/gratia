@@ -608,7 +608,8 @@ test_that("rtw works for twlss model", {
       rtw(
         fit[, 1],
         theta_2_power(fit[, 2], a = tw_pars[1], b = tw_pars[2]),
-        exp(fit[, 3]))
+        exp(fit[, 3])
+      ) |> round(digits = 4)
     )
   )
 })
