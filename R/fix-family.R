@@ -203,7 +203,13 @@
 }
 
 # only really need this for QQ plots
+#' @importFrom mgcv fix.family.qf
 `fix_family_qf` <- function(family) {
+
+  # try obvious thing first and see if mgcv::fix.family.qf() already handles
+  # family
+  family <- mgcv::fix.family.qf(family)
+
   # if `family` contains a NULL qf we move on, if it is non-null return early
   # as it doesn't need fixing
   if (!is.null(family$qf)) {
