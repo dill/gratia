@@ -75,6 +75,7 @@
     EXPR = ft,
     "poisson"  = cdf_poisson,
     "gaussian" = cdf_gaussian,
+    "gaulss"   = cdf_gaulss,
     "binomial" = cdf_binomial,
     "gamma"    = cdf_gamma,
     "scaled_t" = make_cdf_scat(nu = theta[1], sigma = theta[2]),
@@ -216,7 +217,7 @@
 }
 
 #' @importFrom stats pnorm
-`cdf_gaussian` <- function(q, mu, wt, scale, log_p = FALSE) {
+`cdf_gaulss` <- function(q, mu, wt, scale, log_p = FALSE) {
   pnorm(
     q, mean = mu[, 1, drop = TRUE],
     sd = 1 / mu[, 2, drop = TRUE], log.p = log_p
@@ -258,6 +259,7 @@
     EXPR = ft,
     "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
     "tweedie"  = make_qf_tw(theta, ab = get_tw_params(family)),
+    "gaulss"   = qf_gaulss,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -268,12 +270,13 @@
   family
 }
 
-
 #' @importFrom stats qnorm
-`qf_gaussian` <- function(q, mu, wt, scale, log_p = FALSE) {
+`qf_gaulss` <- function(p, mu, wt, scale, log_p = FALSE) {
   qnorm(
-    p, mean = mu[, 1, drop = TRUE],
-    sd = 1 / mu[, 2, drop = TRUE], log.p = log_p
+    p,
+    mean = mu[, 1, drop = TRUE],
+    sd = 1 / mu[, 2, drop = TRUE],
+    log.p = log_p
   )
 }
 
