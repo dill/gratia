@@ -82,7 +82,6 @@
 #' @importFrom rlang expr_label
 #' @importFrom lifecycle deprecated is_present
 #' @importFrom purrr in_parallel map
-#' @importFrom mirai daemons_set
 `smooth_estimates.gam` <- function(object,
     select = NULL,
     smooth = deprecated(),
@@ -143,22 +142,9 @@
   # }
 
   # loop over selected smooths and evaluate them, now with parallel processing
-  if (isFALSE(mirai::daemons_set())) {
-    sm_list <- map(
-      smooths,
-      eval_smooth,
-      model = object,
-      n = n,
-      n_3d = n_3d,
-      n_4d = n_4d,
-      data = data,
-      unconditional = unconditional,
-      frequentist = frequentist,
-      overall_uncertainty = overall_uncertainty,
-      dist = dist,
-      clip = clip
-    )
-  } else {
+  if (isTRUE(requireNamespace("mirai", quietly = TRUE)) && 
+    isTRUE(mirai::daemons_set())) {
+    # parallel version
     sm_list <- map(
       smooths,
       in_parallel(
@@ -174,6 +160,22 @@
         overall_uncertainty = overall_uncertainty, dist = dist, clip = clip,
         eval_smooth = gratia::eval_smooth
       )
+    )
+  } else {
+    # sequential version
+    sm_list <- map(
+      smooths,
+      eval_smooth,
+      model = object,
+      n = n,
+      n_3d = n_3d,
+      n_4d = n_4d,
+      data = data,
+      unconditional = unconditional,
+      frequentist = frequentist,
+      overall_uncertainty = overall_uncertainty,
+      dist = dist,
+      clip = clip
     )
   }
 
