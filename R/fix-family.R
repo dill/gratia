@@ -105,6 +105,8 @@ rd_logistic <- function(mu, wt, scale) {
     "gaussian" = cdf_gaussian,
     "gaulss"   = cdf_gaulss,
     "gevlss"   = cdf_gevlss,
+    "gumbls"   = cdf_gumbls,
+    "gammals"  = cdf_gammals,
     "binomial" = cdf_binomial,
     "gamma"    = cdf_gamma,
     "scaled_t" = make_cdf_scat(nu = theta[1], sigma = theta[2]),
@@ -253,13 +255,28 @@ rd_logistic <- function(mu, wt, scale) {
   )
 }
 
-cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
+`cdf_gumbls` <- function(q, mu, wt, scale, log_p = FALSE) {
+  gamma <- 0.577215664901533 # euler's constant
+  # mu[, 1] is mean, mu[, 2] is log(beta)
+  # F(x) = exp(-exp(-gamma - \frac{x-mu}{beta}))
+  exp(-exp(-gamma - ((q - mu[, 1]) / exp(mu[ ,2]))))
+}
+
+#' @importFrom stats pgamma
+`cdf_gammals` <- function(q, mu, wt, scale, log_p = FALSE) {
+  # mu[,1] is the mean, mu[,2] is log scale (dispersion)
+  # exp(mu[,2]) == phi
+  phi <- exp(mu[, 2])
+  pgamma(q, shape = 1 / phi, scale = mu[, 1] * phi)
+}
+
+`cdf_gevlss` <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
   # check sigma --- doubt needed as this is deep in mgcv
   # if (any(mu[, 2] <= 0)) {
   #   stop("'sigma' must be positive")
   # }
   
-  # Standardized variable
+  # standardized variable
   z <- (q - mu[, 1]) / mu[, 2] # (x - mu) / sigma
   
   # Allocate result
@@ -327,6 +344,8 @@ cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
     "tweedie"  = make_qf_tw(theta, ab = get_tw_params(family)),
     "gaulss"   = qf_gaulss,
     "gevlss"   = qf_gevlss,
+    "gumbls"   = qf_gumbls,
+    "gammals"  = qf_gammals,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -383,6 +402,21 @@ cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
   }
 
   out
+}
+
+# mgcv uses a mean-centred parameterisation
+qf_gumbls <- function(p, mu, wt, scale, log_p = FALSE) {
+  gamma <- 0.577215664901533 # euler's constant
+  # mu[, 1] is mean, mu[, 2] is log(beta)
+  mu[, 1] - exp(mu[, 2]) * (gamma + log(-log(p)))
+}
+
+#' @importFrom stats qgamma
+`qf_gammals` <- function(p, mu, wt, scale, log_p = FALSE) {
+  # mu[,1] is the mean, mu[,2] is log scale (dispersion)
+  # exp(mu[,2]) == phi
+  phi <- exp(mu[, 2])
+  qgamma(p, shape = 1 / phi, scale = mu[, 1] * phi)
 }
 
 #' @importFrom stats pt
