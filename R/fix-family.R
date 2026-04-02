@@ -48,8 +48,36 @@
     fam$rd <- rd_twlss(a = tw_pars[1], b = tw_pars[2])
   }
 
+  ft <- family_type(fam)
+
+  rd_fun <- switch(
+    EXPR = ft,
+    "cnorm" = rd_gaussian,
+    "cpois" = rd_poisson,
+    "clog"  = rd_logistic,
+    NULL
+  )
+
+  # add the RD fun to the family
+  fam$rd <- rd_fun
+
   # return modified family
   fam
+}
+
+#' @importFrom stats rnorm
+rd_gaussian <- function(mu, wt, scale) {
+  rnorm(length(mu), mean = mu, sd = sqrt(scale / wt))
+}
+
+#' @importFrom stats rpois
+rd_poisson <- function(mu, wt, scale) {
+  rpois(length(mu), lambda = mu)
+}
+
+#' @importFrom stats rlogis
+rd_logistic <- function(mu, wt, scale) {
+  rlogis(length(mu), location = mu, scale = scale)
 }
 
 `fix_family_cdf` <- function(family) {
@@ -76,6 +104,7 @@
     "poisson"  = cdf_poisson,
     "gaussian" = cdf_gaussian,
     "gaulss"   = cdf_gaulss,
+    "gevlss"   = cdf_gevlss,
     "binomial" = cdf_binomial,
     "gamma"    = cdf_gamma,
     "scaled_t" = make_cdf_scat(nu = theta[1], sigma = theta[2]),
@@ -237,7 +266,7 @@ cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
   out <- numeric(n)
   
   # any small xi
-  small <- abs(xi) < tol
+  small <- abs(mu[, 3]) < tol
   
   # large xi
   if (any(!small)) {
@@ -297,6 +326,7 @@ cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
     "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
     "tweedie"  = make_qf_tw(theta, ab = get_tw_params(family)),
     "gaulss"   = qf_gaulss,
+    "gevlss"   = qf_gevlss,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -335,7 +365,7 @@ cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
   logt <- log(t)
 
   # |xi| well away from zero so use textbook formula
-  small <- abs(xi) < tol
+  small <- abs(mu[, 3]) < tol
   # large <- !small
 
   out <- numeric(length(p))
