@@ -20,6 +20,14 @@
   and other family-related utilities. These all work with `fitted_values()` now
   too.
 
+* `fix_family_qf()` is now implemented as an extension of *mgcv*'s
+  `fix.family.qf()`, with experimental support for the `scat()`, `gaulss()`, and
+  `gevlss()` families in addition to those already supported by *mgcv* itself.
+
+* `fix_family_cdf()` is extended with support for `gaulss()` and `gevlss()`
+  families. `quantile_residuals()` are now available for these families as a
+  result.
+
 # gratia 0.11.2
 
 ## User visible changes
