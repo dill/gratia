@@ -224,6 +224,43 @@
   )
 }
 
+cdf_gevlss <- function(q, mu, wt, scale, log_p = FALSE, tol = 1e-6) {
+  # check sigma --- doubt needed as this is deep in mgcv
+  # if (any(mu[, 2] <= 0)) {
+  #   stop("'sigma' must be positive")
+  # }
+  
+  # Standardized variable
+  z <- (q - mu[, 1]) / mu[, 2] # (x - mu) / sigma
+  
+  # Allocate result
+  out <- numeric(n)
+  
+  # any small xi
+  small <- abs(xi) < tol
+  
+  # large xi
+  if (any(!small)) {
+    log_term <- log1p(mu[!small, 3] * z[!small])   # log(1 + xi*z)
+    a <- -log_term / mu[!small, 3]
+    
+    out[!small] <- exp(-exp(a))
+  }
+  
+  # small xi Taylor expansion around 0 for the approaching Gumble case
+  if (any(small)) {
+    a <- -z[small] + 0.5 * mu[small, 3] * z[small]^2
+    out[small] <- exp(-exp(a))
+  }
+  
+  # handle support (important for xi < 0)
+  valid <- 1 + mu[, 3] * z > 0
+  out[!valid & mu[, 3] > 0] <- 0
+  out[!valid & mu[, 3] < 0] <- 1
+  
+  out
+}
+
 # only really need this for QQ plots
 #' @importFrom mgcv fix.family.qf
 `fix_family_qf` <- function(family) {
@@ -278,6 +315,44 @@
     sd = 1 / mu[, 2, drop = TRUE],
     log.p = log_p
   )
+}
+
+`qf_gevlss` <- function(p, mu, wt, log_p = FALSE, tol = 1e-6) {
+  # checks, but I doubt these are needed as this is deep in mgcv
+  #if (any(p <= 0 | p >= 1)) {
+  #  stop("All probabilities 'p' must be in (0, 1)")
+  #}
+  #if (any(mu[, 2] <= 0)) {
+  #  stop("All 'sigma' must be positive")
+  #}
+
+  # extract vectors --- perhaps not if data is big?
+  # sigma <- mu[, 2]
+  # xi    <- mu[, 3]
+  # mu    <- mu[, 1]
+
+  t <- -log(p)
+  logt <- log(t)
+
+  # |xi| well away from zero so use textbook formula
+  small <- abs(xi) < tol
+  # large <- !small
+
+  out <- numeric(length(p))
+
+  # textbook formula
+  if (any(!small)) {
+    out[!small] <- mu[!small, 1] + mu[!small, 2] *
+      expm1(-mu[!small, 3] * logt[!small]) / mu[!small, 3]
+  }
+
+  # use Taylor expansion around xi = 0
+  if (any(small)) {
+    out[small] <- mu[small, 1] + mu[small, 2] * 
+      (-logt[small] + 0.5 * mu[small, 3] * logt[small]^2)
+  }
+
+  out
 }
 
 #' @importFrom stats pt
