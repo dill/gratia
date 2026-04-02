@@ -1,16 +1,14 @@
-#' Extract fixed effects estimates
-#'
-#' @param object a fitted GAM
-#' @param ... arguments passed to other methods
-#'
-#' @importFrom nlme fixef
-#' @name fixef
+#' @rdname fixed_effects.gam
 #' @export
-NULL
+`fixed_effects` <- function(object, ...) {
+  UseMethod("fixed_effects")
+}
 
-#' Extract fixed effects estimates from a fitted GAM
+#' Extract fixed effects estimates from a fitted model
 #'
-#' @param object a fitted GAM
+#' @param object a fitted model. Supported classes are models fitted by
+#'   [mgcv::gam()], [mgcv::bam()], [mgcv::gamm()], [mgcv::gam()],
+#'   [gamm4::gamm4()], [stats::glm()], and [stats::lm()].
 #' @param ... arguments passed to other methods
 #'
 #' @export
@@ -26,9 +24,9 @@ NULL
 #'       s(Days, Subject, bs = "re"),
 #'     data = sleepstudy, method = "REML"
 #'   )
-#'   fixef(m)
+#'   fixed_effects(m)
 #' }
-`fixef.gam` <- function(object, ...) {
+`fixed_effects.gam` <- function(object, ...) {
   coefs <- coef(object)
   nms <- names(coefs)
   # drop everything that starts with s, te, ti, or t2 and is followed by a (
@@ -38,33 +36,34 @@ NULL
   coefs[nms]
 }
 
-#' @rdname fixef.gam
+#' @rdname fixed_effects.gam
 #' @export
-`fixef.gamm` <- function(object, ...) {
+`fixed_effects.gamm` <- function(object, ...) {
   object <- object$gam
-  fixef(object)
+  fixed_effects(object)
 }
 
-#' @rdname fixef.gam
+#' @rdname fixed_effects.gam
 #' @export
-`fixef.lm` <- function(object, ...) {
+`fixed_effects.gamm4` <- function(object, ...) {
+  object <- object$gam
+  fixed_effects(object)
+}
+
+#' @rdname fixed_effects.gam
+#' @export
+`fixed_effects.lm` <- function(object, ...) {
   coef(object)
 }
 
-#' @rdname fixef.gam
+#' @rdname fixed_effects.gam
 #' @export
-`fixef.glm` <- function(object, ...) {
+`fixed_effects.glm` <- function(object, ...) {
   coef(object)
 }
 
-#' @rdname fixef.gam
-#' @export
-`fixed_effects` <- function(object, ...) {
-  UseMethod("fixed_effects")
-}
-
-#' @rdname fixef.gam
+#' @rdname fixed_effects.gam
 #' @export
 `fixed_effects.default` <- function(object, ...) {
-  fixef(object, ...)
+  fixed_effects(object, ...)
 }
