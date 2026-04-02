@@ -71,7 +71,6 @@
 #' @importFrom purrr map in_parallel
 #' @importFrom dplyr bind_rows
 #' @importFrom stats coef
-#' @importFrom mirai daemons_set
 `basis.gam` <- function(
   object,
   select = NULL,
@@ -115,14 +114,8 @@
     data <- delete_response(object, data = data)
   }
 
-  if (isFALSE(mirai::daemons_set())) {
-    bfuns <- map(
-      seq_along(smooths),
-      tidy_basis_wrapper,
-      ids = ids, data = data, smooths = smooths, model = object, n = n,
-      n_3d = n_3d, n_4d = n_4d, offset = NULL
-    )
-  } else {
+  if (isTRUE(requireNamespace("mirai", quietly = TRUE)) && 
+    isTRUE(mirai::daemons_set())) {
     # parallel version
     bfuns <- map(
       seq_along(smooths),
@@ -137,6 +130,14 @@
         n = n, n_3d = n_3d, n_4d = n_4d,
         tidy_basis_wrapper = tidy_basis_wrapper
       )
+    )
+  } else {
+    # sequential version
+    bfuns <- map(
+      seq_along(smooths),
+      tidy_basis_wrapper,
+      ids = ids, data = data, smooths = smooths, model = object, n = n,
+      n_3d = n_3d, n_4d = n_4d, offset = NULL
     )
   }
 

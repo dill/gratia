@@ -87,7 +87,7 @@
 #' @rdname qq_plot
 #'
 #' @importFrom ggplot2 ggplot geom_point geom_abline geom_ribbon labs aes
-#' @importFrom tools toTitleCase
+#' @importFrom stringr str_to_title
 #' @importFrom stats residuals IQR median
 #'
 #' @export
@@ -183,7 +183,7 @@
   df <- as_tibble(df)
   ## add labels if not supplied
   if (is.null(ylab)) {
-    ylab <- paste(toTitleCase(type), "residuals")
+    ylab <- paste(str_to_title(type), "residuals")
   }
   if (is.null(xlab)) {
     xlab <- "Theoretical quantiles"
@@ -575,7 +575,7 @@
 #' @export
 #'
 #' @importFrom stats napredict residuals
-#' @importFrom tools toTitleCase
+#' @importFrom stringr str_to_title
 #' @importFrom ggplot2 ggplot aes geom_point geom_hline labs
 `residuals_linpred_plot` <- function(
   model,
@@ -632,7 +632,7 @@
     xlab <- "Linear predictor"
   }
   if (is.null(ylab)) {
-    ylab <- paste(toTitleCase(type), "residuals")
+    ylab <- paste(str_to_title(type), "residuals")
   }
   if (missing(title)) {
     title <- "Residuals vs linear predictor"
@@ -723,7 +723,7 @@
 #' @export
 #'
 #' @importFrom ggplot2 ggplot aes geom_histogram labs
-#' @importFrom tools toTitleCase
+#' @importFrom stringr str_to_title
 #' @importFrom stats residuals
 #' @importFrom grDevices nclass.Sturges nclass.scott nclass.FD
 `residuals_hist_plot` <- function(
@@ -777,7 +777,7 @@
 
   ## add labels
   if (is.null(xlab)) {
-    xlab <- paste(toTitleCase(type), "residuals")
+    xlab <- paste(str_to_title(type), "residuals")
   }
   if (is.null(ylab)) {
     ylab <- "Frequency"
@@ -825,7 +825,7 @@
 #'
 #' @importFrom dplyr mutate
 #' @importFrom ggplot2 ggplot geom_point geom_hline geom_ribbon labs aes
-#' @importFrom tools toTitleCase
+#' @importFrom stringr str_to_title
 #'
 #' @examples
 #' load_mgcv()
@@ -909,7 +909,7 @@
 
   ## add labels if not supplied
   if (is.null(ylab)) {
-    ylab <- paste(toTitleCase(type), "residuals (Deviation)")
+    ylab <- paste(str_to_title(type), "residuals (Deviation)")
   }
 
   if (is.null(xlab)) {
