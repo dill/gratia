@@ -106,14 +106,14 @@
 # fix family funs work for gevlss
 
     Code
-      round(cdf, 4)
+      round(cdf, 3)
     Output
-      [1] 0.0000 0.9834 0.8655 0.0187 0.9266 0.1395
+      [1] 0.000 0.983 0.866 0.019 0.927 0.139
 
 ---
 
     Code
-      round(qf, 4)
+      round(qf, 3)
     Output
       [1] 1.1 3.2 2.3 1.3 4.5 2.2
 

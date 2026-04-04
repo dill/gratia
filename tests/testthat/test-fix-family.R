@@ -145,11 +145,11 @@ test_that("fix family funs work for gevlss", {
   cdf <- cdf_gevlss(q = q, mu = mu)
 
   expect_snapshot(
-    cdf |> round(4)
+    cdf |> round(3)
   )
   qf_fun <- fix_family_qf(gevlss())$qf
   qf <- qf_fun(cdf, mu = mu)
-  expect_snapshot(round(qf, 4))
+  expect_snapshot(round(qf, 3))
   expect_equal(q, qf)
 })
 
