@@ -218,6 +218,136 @@ m_gaulss <- gam(list(y ~ s(x0) + s(x1) + s(x2) + s(x3), ~1),
   family = gaulss
 )
 
+## betar model
+sim_betar <- function(n = 400, seed = 3) {
+  df <- data_sim("eg1", n = n, seed = seed)
+  mu <- binomial()$linkinv(df$f / 4 - 2)
+  phi <- 0.5
+  a <- mu*phi
+  b <- phi - a
+  df <- df |> mutate(
+    y = withr::with_seed(seed, stats::rbeta(n, a, b)) 
+  )
+  df
+}
+
+m_betar <- gam(
+  y ~ s(x0) + s(x1) + s(x2) + s(x3),
+  method = "REML",
+  family = betar(link="logit"),
+  data = sim_betar()
+)
+
+## Gammals model
+sim_gammals <- function(n = 400, seed = 9) {
+  x <- withr::with_seed(seed, runif(4 * n))
+  x0 <- x[1:n]
+  x1 <- x[(n + 1):(n * 2)]
+  x2 <- x[(n * 2 + 1):(n * 3)]
+  x3 <- x[(n * 3 + 1):(n * 4)]
+  mu <- exp(
+    (gw_f0(x0) + gw_f2(x2)) / 5
+  )
+  theta <- exp(
+    gw_f1(x1) / 2 - 2
+  )
+  tibble::tibble(
+    y  = withr::with_seed(
+      seed,
+      rgamma(n, shape = 1 / theta, scale = mu * theta)
+    ),
+    x0 = x0,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3
+  )
+}
+
+m_gammals <- gam(
+  list(
+    y ~ s(x0) + s(x2),
+      ~ s(x1) + s(x3)
+  ),
+  method = "REML",
+  family = gammals(),
+  data = sim_gammals()
+)
+
+## Gumbls model
+sim_gumbls <- function(n = 400, seed = 9) {
+  x <- withr::with_seed(seed, runif(4 * n))
+  x0 <- x[1:n]
+  x1 <- x[(n + 1):(n * 2)]
+  x2 <- x[(n * 2 + 1):(n * 3)]
+  x3 <- x[(n * 3 + 1):(n * 4)]
+  mu <- gw_f0(x0) + gw_f1(x1)
+  beta <- exp(gw_f2(x2) / 5)
+  tibble::tibble(
+    y  = withr::with_seed(
+      seed,
+      mu - beta * log(-log(runif(n)))
+    ),
+    x0 = x0,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3
+  )
+}
+
+m_gumbls <- gam(
+  list(
+    y ~ s(x0) + s(x1),
+      ~ s(x2) + s(x3)
+  ),
+  method = "REML",
+  family = gumbls(),
+  data = sim_gammals()
+)
+
+# gevlss model
+sim_gevlss <- function(n = 500, seed = 9) {
+  qf_gev <- function(z, mu, sigma, xi) {
+    # GEV inverse cdf
+    xi[abs(xi) < 1e-8] <- 1e-8 # approximate xi = 0, by small xi
+    x <- mu + ((-log(z))^-xi - 1) * sigma / xi
+  }
+  x <- withr::with_seed(seed, runif(5 * n)) # 5! 1 extra for y
+  x0 <- x[1:n]
+  x1 <- x[(n + 1):(n * 2)]
+  x2 <- x[(n * 2 + 1):(n * 3)]
+  x3 <- x[(n * 3 + 1):(n * 4)]
+  y  <- x[(n * 4 + 1):(n * 5)]
+
+  mu  <- gw_f2(x2)
+  rho <- gw_f0(x0)
+  xi <- (gw_f1(x1) - 4) / 9
+
+  tibble::tibble(
+    y = qf_gev(y, mu, exp(rho), xi),
+    x0 = x0,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3
+  )
+}
+
+# this produces a couple of warnings; think some parameter went (close to) out
+# of bounds during fitting. Simon uses this example in ?gevlss so it is OK
+suppressWarnings(
+    m_gevlss <- gam(
+    list(
+      y ~ s(x2),
+        ~ s(x0),
+        ~ s(x1)
+    ),
+    method = "REML",
+    family = gevlss(),
+    data = sim_gevlss(),
+    optimizer = "efs" # for robustness
+  )
+)
+
+# adaptive smooth
 data(mcycle, package = "MASS")
 m_accel <- gam(
   list(
@@ -818,4 +948,4 @@ zip_data <- function(seed = 0, n = 400, theta = c(-2, 0.3)) {
   df
 }
 zip_df <- zip_data(seed = 1)
-m_ziP <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), family = ziP(), data = zip_df)
+  m_ziP <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3), family = ziP(), data = zip_df)
