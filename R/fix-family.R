@@ -406,7 +406,7 @@ rd_logistic <- function(mu, wt, scale) {
     "gevlss"   = qf_gevlss,
     "gumbls"   = qf_gumbls,
     "gammals"  = qf_gammals,
-    "ziplss"   = qf_ziplss,
+    #"ziplss"   = qf_ziplss,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
