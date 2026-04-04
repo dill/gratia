@@ -22,7 +22,7 @@
 
 * `fix_family_qf()` is now implemented as an extension of *mgcv*'s
   `fix.family.qf()`, with experimental support for the `scat()`, `tw()`,
-  `Tweedie()`, `gaulss()`, `gevlss()`, `gumbls()`, `gammals()`, and `ziplss()`
+  `Tweedie()`, `gaulss()`, `gevlss()`, `gumbls()`, & `gammals()`
   families in addition to those already supported by *mgcv* itself.
 
 * `fix_family_cdf()` is extended with support for `gaulss()`, `gevlss()`,
