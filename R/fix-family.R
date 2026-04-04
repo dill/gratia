@@ -48,22 +48,26 @@
     fam$rd <- rd_twlss(a = tw_pars[1], b = tw_pars[2])
   }
 
-  ft <- family_type(fam)
+  # if still null, try one of the other families that just need an rd_fun,
+  # not an rd-factory one as these don't rely on other parameters
+  if (is.null(fam$rd)) {
+    ft <- family_type(fam)
 
-  rd_fun <- switch(
-    EXPR = ft,
-    "cnorm" = rd_gaussian,
-    "cpois" = rd_poisson,
-    "clog"  = rd_logistic,
-    NULL
-  )
+    rd_fun <- switch(
+      EXPR = ft,
+      "cnorm" = rd_gaussian,
+      "cpois" = rd_poisson,
+      "clog"  = rd_logistic,
+      NULL
+    )
 
-  # add the RD fun to the family
-  fam$rd <- rd_fun
+    # add the RD fun to the family
+    fam$rd <- rd_fun
+  }
 
-  # return modified family
+  # return possibly modified family
   fam
-}
+  }
 
 #' @importFrom stats rnorm
 rd_gaussian <- function(mu, wt, scale) {
