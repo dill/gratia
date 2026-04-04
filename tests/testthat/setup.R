@@ -370,7 +370,7 @@ suppressWarnings(
 )
 
 # adaptive smooth
-data(mcycle, package = "MASS")
+utils::data(mcycle, package = "MASS")
 m_accel <- gam(
   list(
     accel ~ s(times, bs = "ad"),
@@ -394,7 +394,7 @@ m_lm <- lm(y ~ x0 + x1 + x2 + x3, data = quick_eg1)
 
 m_glm <- glm(y ~ x0 + x1 + x2 + x3, data = quick_eg1)
 
-data(CO2)
+utils::data(CO2, package = "datasets")
 m_ordered_by <- gam(uptake ~ Plant + s(conc, k = 5) +
   s(conc, by = Plant, k = 5), data = CO2, method = "REML")
 
@@ -571,7 +571,7 @@ m_poly <- gam(y ~ fac + ff + log(x0) + x1 + poly(x2, 2, raw = TRUE),
 )
 
 # -- scam models --------------------------------------------------------------
-data(smallAges)
+utils::data(smallAges, package = "gratia")
 smallAges$Error[1] <- 1.1
 sw <- scam(Date ~ s(Depth, k = 5, bs = "mpd"),
   data = smallAges,
@@ -587,7 +587,7 @@ sw_mdcv <- scam(Date ~ s(Depth, k = 5, bs = "mdcv"),
 )
 
 # this should be folded into data_sim()
-`sim_scam` <- function(n, seed = NULL) {
+sim_scam <- function(n, seed = NULL) {
   ## sort out the seed
   if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
     runif(1)
@@ -625,7 +625,7 @@ m_ocat <- gam(y ~ s(x0) + s(x1) + s(x2) + s(x3),
 )
 
 # Simon's spline on the sphere example from ?smooth.construct.sos.smooth.spec
-`sim_sos_eg_data` <- function(n = 400, seed = NULL) {
+sim_sos_eg_data <- function(n = 400, seed = NULL) {
   if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
     runif(1)
   }
@@ -733,6 +733,7 @@ m_twlss <- gam(list(y ~ s(x0) + s(x1) + s(x2) + s(x3), ~1, ~1),
 # -- Models for 2d sz and fs basis smooths #249 -------------------------------
 i_m <- c(1, 0.5)
 i_xt <- list(bs = "ds", m = i_m)
+utils::data(iris, package = "datasets")
 i_sz <- gam(
   Petal.Width ~ s(Sepal.Length, Sepal.Width, bs = "ds", m = i_m) +
     s(Species, Sepal.Length, Sepal.Width, bs = "sz", xt = i_xt),
@@ -750,7 +751,7 @@ rm(i_m, i_xt)
 
 # -- Soap films ---------------------------------------------------------------
 # soap film model from ?soap
-`soap_fs_data` <- function(n = 600, bnd, seed = 0) {
+soap_fs_data <- function(n = 600, bnd, seed = 0) {
   df <- withr::with_seed(seed, {
     v <- runif(n) * 5 - 1
     w <- runif(n) * 2 - 1
@@ -798,7 +799,7 @@ m_soap_bndry <- gam(
 
 ## --- Nested boundary example ------------------------------------------------
 
-`soap_nested_bndry` <- function(n = 100, a = 0.3, b = 0.3) {
+soap_nested_bndry <- function(n = 100, a = 0.3, b = 0.3) {
   bndry <- list(
     list(x = 0, y = 0),
     list(x = 0, y = 0)
@@ -811,7 +812,7 @@ m_soap_bndry <- gam(
   bndry
 }
 
-`soap_nested_knots` <- function(n_knots = 8, bndry) {
+soap_nested_knots <- function(n_knots = 8, bndry) {
   y_grid <- x_grid <- seq(-1, 1, length = n_knots)
   x <- rep(x_grid, n_knots)
   y <- rep(y_grid, rep(n_knots, n_knots))
@@ -820,7 +821,7 @@ m_soap_bndry <- gam(
   knots
 }
 
-`soap_nested_data` <- function(n = 300, seed = 1, bndry) {
+soap_nested_data <- function(n = 300, seed = 1, bndry) {
   f <- function(x, y) {
     exp(-(x - 0.3)^2 - (y - 0.3)^2)
   }
