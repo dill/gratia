@@ -238,6 +238,28 @@ m_betar <- gam(
   data = sim_betar()
 )
 
+## bcg() family
+sim_bcg <- function(n = 400, seed = c(3, 9)) {
+  # Simulate some gamma data?
+  df <- data_sim("eg1", n = n, dist = "normal", scale = 1, seed = seed[1])
+  df <- df |>
+    mutate(
+      f = f / 4,
+      y = withr::with_seed(
+        seed[2],
+        rgamma(exp(f) * 0, shape = 1 / 0.5, scale = exp(f) * 0.5)
+      )
+    )
+  df
+}
+
+m_bcg <- gam(
+  y ~ s(x0) + s(x1) + s(x2) + s(x3),
+  family = bcg(),
+  data = sim_bcg(),
+  method = "REML"
+)
+
 ## Gammals model
 sim_gammals <- function(n = 400, seed = 9) {
   x <- withr::with_seed(seed, runif(4 * n))
