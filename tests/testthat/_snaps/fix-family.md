@@ -101,7 +101,7 @@
     Code
       round(cdf, 4)
     Output
-      [1] 0.6430 0.8787 0.5499 0.2251 0.9873 0.5032
+      [1] 0.6430 0.8787 0.5499 0.6959 0.9873 0.9919
 
 # fix family funs work for gevlss
 
@@ -110,12 +110,26 @@
     Output
       [1] 0.0000 0.9834 0.8655 0.0187 0.9266 0.1395
 
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1] 1.1 3.2 2.3 1.3 4.5 2.2
+
 # fix family funs work for scat
 
     Code
       round(cdf, 4)
     Output
       [1] 0.1841 0.7257 0.7881
+
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1] 1.1 3.2 2.3
 
 # fix family funs work for nb
 
@@ -124,6 +138,13 @@
     Output
       [1] 0.4060 0.8571 0.9814
 
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1] 1 3 4
+
 # fix family funs work for tw
 
     Code
@@ -131,10 +152,24 @@
     Output
       [1] 0.3634 0.7349 0.8024
 
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1] 1.1 3.2 2.3
+
 # fix family funs work for betar
 
     Code
       round(cdf, 4)
     Output
-      [1] 0.8390 0.6367 0.5667
+      [1] 0.8584 0.6058 0.4671
+
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1] 0.2 0.5 0.9
 

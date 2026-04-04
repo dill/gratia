@@ -75,9 +75,8 @@ test_that("simulate() works with out a seed", {
 test_that("simulate() fails if we don't have an rd function", {
   skip_on_cran()
 
-  expect_error(simulate(m_censor),
-    "Don't yet know how to simulate from family <cnorm(2.42)>",
-    fixed = TRUE
+  expect_error(simulate(m_bcg),
+    "^Don't yet know how to simulate from family <bcg\\(",
   )
 })
 

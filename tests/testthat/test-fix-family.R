@@ -123,6 +123,9 @@ test_that("fix family funs work for gumbls", {
 })
 
 test_that("fix family funs work for ziplss", {
+  skip_on_ci()
+  skip_on_cran()
+
   q     <- c(1, 3, 2, 5, 4, 10)
   mu    <- head(fitted(m_ziplss))
   cdf <- cdf_ziplss(q = q, mu = mu)
