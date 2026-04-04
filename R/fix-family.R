@@ -109,10 +109,11 @@ rd_logistic <- function(mu, wt, scale) {
     "gammals"  = cdf_gammals,
     "binomial" = cdf_binomial,
     "gamma"    = cdf_gamma,
+    "ziplss"    = cdf_ziplss,
     "scaled_t" = make_cdf_scat(nu = theta[1], sigma = theta[2]),
     "negative_binomial" = make_cdf_nb(theta),
     ## "inverse_gaussian"  = cdf_invgaussian, # FIXME: not sure I trust this yet
-    "beta_regression"   = make_cdf_beta(theta),
+    "beta_regression"   = make_cdf_beta(theta, eps = betar_eps(family)),
     "tweedie"  = make_cdf_tw(theta, ab = get_tw_params(family)),
     NULL
   )
@@ -139,6 +140,7 @@ rd_logistic <- function(mu, wt, scale) {
   pbinom(
     q * (wt + as.numeric(wt == 0)), size = wt, prob = mu, log.p = log_p
   )
+  #pbinom(floor(wt * q), wt, mu)
 }
 
 #' @importFrom stats pgamma
@@ -170,81 +172,6 @@ rd_logistic <- function(mu, wt, scale) {
 # pinvgaussian respectively.
 `cdf_invgaussian` <- function(q, mu, wt, scale, log_p = FALSE) {
   pinvgaussian(q, mu = mu, wt = wt, scale = scale, log_p = log_p)
-}
-
-## For distributions that estimate other parameters, we need to bind the values
-## of those parameters inside the CDF function in the family. `theta` are then
-## passed to the `make_cdf_xxx()` function as separate parameters with real
-## names so it's easy to follow what is being done
-
-#' @importFrom stats pt
-`make_cdf_scat` <- function(nu, sigma) {
-  function(q, mu, wt, scale, log_p = FALSE) {
-    # what to do with weights wt? I think this should be (q - mu) / sigma / wt
-    # q <- (q - mu) / sigma
-    pt(
-      (q - mu) / sigma, # scale the data such that q ~ t_{nu}()
-      df = nu,
-      lower.tail = TRUE, log.p = log_p
-    )
-  }
-}
-
-#' @importFrom stats pnbinom
-`make_cdf_nb` <- function(theta) {
-  function(q, mu, wt, scale, log_p = FALSE) {
-    pnbinom(
-      q,
-      size = theta,
-      mu = mu,
-      lower.tail = TRUE, log.p = log_p
-    )
-  }
-}
-
-#' @importFrom stats pbeta
-`make_cdf_beta` <- function(phi) {
-  function(q, mu, wt, scale, log_p = FALSE) {
-    pbeta(
-      q,
-      shape1 = phi * mu,
-      shape2 = phi * (1 - mu),
-      lower.tail = TRUE, log.p = log_p
-    )
-  }
-}
-
-#' @importFrom tweedie ptweedie
-`make_cdf_tw` <- function(theta, ab) {
-  fun <- if (length(ab) == 1L) {
-    # here ab is the tweedie power specified in Tweedie()
-    function(p, mu, wt, scale, log_p = FALSE){
-      tweedie::ptweedie(
-        p,
-        mu = mu,
-        phi = scale,
-        xi = ab
-      )
-    }
-  } else {
-    function(q, mu, wt, scale, log_p = FALSE) {
-      a <- ab[1] # tweedie lower and upper bounds used in fitting
-      b <- ab[2]
-      # compute tweedie power parameter xi
-      xi <- if (theta > 0) {
-        (b + a * exp(-theta)) / (1 + exp(-theta))
-      } else {
-        (b * exp(theta) + a) / (exp(theta) + 1)
-      }
-      tweedie::ptweedie(
-        q,
-        mu = mu,
-        phi = scale, # think to handle weights we need scale / wt
-        xi = xi
-      )
-    }
-  }
-  fun
 }
 
 #' @importFrom stats pnorm
@@ -280,7 +207,7 @@ rd_logistic <- function(mu, wt, scale) {
   z <- (q - mu[, 1]) / mu[, 2] # (x - mu) / sigma
   
   # Allocate result
-  out <- numeric(n)
+  out <- numeric(nrow(mu))
   
   # any small xi
   small <- abs(mu[, 3]) < tol
@@ -305,6 +232,137 @@ rd_logistic <- function(mu, wt, scale) {
   out[!valid & mu[, 3] < 0] <- 1
   
   out
+}
+
+# implementation needs checking; ChatGPT used to derive the math for the CDF
+#' @importFrom stats ppois
+`cdf_ziplss` <- function(q, mu, wt, scale, log_p = FALSE) {
+  lambda <- exp(mu[, 1])
+  p <- -expm1(-exp(mu[, 2])) # = 1 - exp(-exp(eta))
+
+  log_cdf <- numeric(nrow(mu))
+  
+  # y < 0
+  log_cdf[q < 0] <- -Inf
+
+  # 0 <= y < 1
+  idx0 <- (q >= 0 & q < 1)
+  log_cdf[idx0] <- log1p(-p[idx0]) # log(1 - p)
+
+  # y >= 1
+  idx <- (q >= 1)
+  
+  if (any(idx)) {
+    y_i <- floor(q[idx])
+    lam <- lambda[idx]
+    p_i <- p[idx]
+    
+    # log P(Y=0)
+    log_p0 <- -lam
+    
+    # log Poisson CDF
+    log_cdfy <- ppois(y_i, lam, log.p = TRUE)
+    
+    # compute log(Fy - p0) safely
+    # log(exp(log_Fy) - exp(log_p0))
+    log_num <- log_cdfy + log1p(-exp(log_p0 - log_cdfy))
+    
+    # log(1 - p0)
+    log_denom <- log1p(-exp(log_p0))
+    
+    # log truncated CDF
+    log_trunc <- log_num - log_denom
+    
+    # combine: log((1-p) + p * trunc)
+    # Use log-sum-exp
+    a <- log1p(-p_i)        # log(1 - p)
+    b <- log(p_i) + log_trunc
+    
+    m <- pmax(a, b)
+    log_cdf[idx] <- m + log(exp(a - m) + exp(b - m))
+  }
+
+  if (isFALSE(log_p)) {
+    log_cdf = exp(log_cdf) # stupid name, I know
+  }
+
+  log_cdf # may not be log_cdf but cdf, and likely won't be because log_p is FALSE
+}
+
+## For distributions that estimate other parameters, we need to bind the values
+## of those parameters inside the CDF function in the family. `theta` are then
+## passed to the `make_cdf_xxx()` function as separate parameters with real
+## names so it's easy to follow what is being done
+
+#' @importFrom stats pt
+`make_cdf_scat` <- function(nu, sigma) {
+  function(q, mu, wt, scale, log_p = FALSE) {
+    # what to do with weights wt? I think this should be (q - mu) / sigma / wt
+    # q <- (q - mu) / sigma
+    pt(
+      (q - mu) / scale, # scale the data such that q ~ t_{nu}()
+      df = nu,
+      lower.tail = TRUE, log.p = log_p
+    )
+  }
+}
+
+#' @importFrom stats pnbinom
+`make_cdf_nb` <- function(theta) {
+  function(q, mu, wt, scale, log_p = FALSE) {
+    pnbinom(
+      q,
+      size = theta,
+      mu = mu,
+      lower.tail = TRUE, log.p = log_p
+    )
+  }
+}
+
+#' @importFrom stats pbeta
+`make_cdf_beta` <- function(phi, eps) {
+  function(q, mu, wt, scale, log_p = FALSE) {
+    p <- pbeta(
+      q,
+      shape1 = phi * mu,
+      shape2 = phi * (1 - mu),
+      lower.tail = TRUE, log.p = log_p
+    )
+    p
+  }
+}
+
+#' @importFrom tweedie ptweedie
+`make_cdf_tw` <- function(theta, ab) {
+  fun <- if (length(ab) == 1L) {
+    # here ab is the tweedie power specified in Tweedie()
+    function(p, mu, wt, scale, log_p = FALSE){
+      tweedie::ptweedie(
+        p,
+        mu = mu,
+        phi = scale,
+        xi = ab
+      )
+    }
+  } else {
+    function(q, mu, wt, scale, log_p = FALSE) {
+      a <- ab[1] # tweedie lower and upper bounds used in fitting
+      b <- ab[2]
+      # compute tweedie power parameter xi
+      xi <- if (theta > 0) {
+        (b + a * exp(-theta)) / (1 + exp(-theta))
+      } else {
+        (b * exp(theta) + a) / (exp(theta) + 1)
+      }
+      tweedie::ptweedie(
+        q,
+        mu = mu,
+        phi = scale, # think to handle weights we need scale / wt
+        xi = xi
+      )
+    }
+  }
+  fun
 }
 
 # only really need this for QQ plots
@@ -342,10 +400,13 @@ rd_logistic <- function(mu, wt, scale) {
     EXPR = ft,
     "scaled_t" = make_qf_scat(nu = theta[1], sigma = theta[2]),
     "tweedie"  = make_qf_tw(theta, ab = get_tw_params(family)),
+    #"nb"       = make_qf_betar(phi = theta),
+    #"betar"    = make_qf_betar(theta),
     "gaulss"   = qf_gaulss,
     "gevlss"   = qf_gevlss,
     "gumbls"   = qf_gumbls,
     "gammals"  = qf_gammals,
+    "ziplss"   = qf_ziplss,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -427,7 +488,7 @@ qf_gumbls <- function(p, mu, wt, scale, log_p = FALSE) {
       df = nu,
       lower.tail = TRUE,
       log.p = log_p
-    ) * sigma + mu
+    ) * scale + mu
   }
 }
 
