@@ -410,7 +410,7 @@ rd_logistic <- function(mu, wt, scale) {
     "gevlss"   = qf_gevlss,
     "gumbls"   = qf_gumbls,
     "gammals"  = qf_gammals,
-    #"ziplss"   = qf_ziplss,
+    "ziplss"   = qf_ziplss,
     NULL # if don't handle family, return NULL as qfun so family unchanged
   )
 
@@ -483,6 +483,56 @@ qf_gumbls <- function(p, mu, wt, scale, log_p = FALSE) {
   phi <- exp(mu[, 2])
   qgamma(p, shape = 1 / phi, scale = mu[, 1] * phi)
 }
+
+#' @importFrom stats qpois
+`qf_ziplss` <- function(p, mu, wt, scale, log_p = FALSE) {
+  # gamma is log(lambda), eta is prob of >0 on a cloglog scale
+  # mu is matrix, col 1 is gamma, col 2 is eta
+  n <- nrow(mu)
+  
+  # Parameters
+  lambda <- exp(mu[,1])
+  pr <- -expm1(-exp(mu[,2]))   # stable: 1 - exp(-exp(eta))
+  
+  # Output
+  q <- numeric(n)
+  
+  # p <= 1 - pr
+  idx0 <- (p <= (1 - p))
+  q[idx0] <- 0
+  
+  # p > 1 - pr
+  idx <- !idx0
+  
+  if (any(idx)) {
+    p_i <- p[idx]
+    lam <- lambda[idx]
+    pr_i <- pr[idx]
+    
+    # log P(Y=0)
+    log_pr0 <- -lam
+    pr0 <- exp(log_pr0)
+    
+    # Stable computation of transformed probability
+    # (p - (1 - pr)) / pr
+    p_scaled <- (p_i - (1 - pr_i)) / pr_i
+    
+    # u_star = pr0 + (1 - pr0) * u_scaled
+    # use expm1/log1p for stability
+    p_star <- pr0 + (-expm1(log_pr0)) * p_scaled
+    
+    # Clamp to avoid qpois issues
+    eps <- .Machine$double.eps^0.75
+    p_star[p_star >= 1] <- 1 - eps
+    p_star[p_star <= 0] <- eps
+    
+    # Invert Poisson CDF
+    q[idx] <- qpois(p_star, lambda = lam)
+  }
+  
+  q
+}
+
 
 #' @importFrom stats pt
 `make_qf_scat` <- function(nu, sigma) {
