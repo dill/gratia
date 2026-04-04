@@ -126,17 +126,17 @@ test_that("fix family funs work for ziplss", {
   skip_on_ci()
   skip_on_cran()
 
-  q     <- c(1, 3, 2, 5, 4, 10)
+  q     <- c(1.1, 3, 2, 5, 4, 10)
   mu    <- head(fitted(m_ziplss))
   cdf <- cdf_ziplss(q = q, mu = mu)
 
   expect_snapshot(
     cdf |> round(4)
   )
-  # qf_fun <- fix_family_qf(ziplss())$qf # not yet implemented
-  # qf <- qf_fun(cdf, mu = mu)
-  # expect_snapshot(round(qf, 4))
-  # expect_equal(q, qf)
+  qf_fun <- fix_family_qf(ziplss())$qf # not yet implemented
+  qf <- qf_fun(cdf, mu = mu)
+  expect_snapshot(round(qf, 4))
+  expect_true(all(qf >= q)) # as cdf is discrete, so only qf >= q, I think
 })
 
 test_that("fix family funs work for gevlss", {

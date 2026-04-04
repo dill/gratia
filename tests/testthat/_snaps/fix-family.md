@@ -103,6 +103,13 @@
     Output
       [1] 0.6430 0.8787 0.5499 0.6959 0.9873 0.9919
 
+---
+
+    Code
+      round(qf, 4)
+    Output
+      [1]  2  3  2  5  4 10
+
 # fix family funs work for gevlss
 
     Code
