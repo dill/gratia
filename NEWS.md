@@ -20,6 +20,18 @@
   and other family-related utilities. These all work with `fitted_values()` now
   too.
 
+* `fix_family_qf()` is now implemented as an extension of *mgcv*'s
+  `fix.family.qf()`, with experimental support for the `scat()`, `tw()`,
+  `Tweedie()`, `gaulss()`, `gevlss()`, `gumbls()`, `gammals()`, and `ziplss()`
+  families in addition to those already supported by *mgcv* itself.
+
+* `fix_family_cdf()` is extended with support for `gaulss()`, `gevlss()`,
+  `gumbls()`, `gammals()`, and `ziplss()` families. `quantile_residuals()` are
+  now available for these families as a result.
+
+* `fix_family_rd()` adds support for the `cnorm()`, `cpois()` and `clog()`
+  families.
+
 # gratia 0.11.2
 
 ## User visible changes
@@ -210,7 +222,8 @@ citation previously created by `citation()`:
   effect surfaces for multivariate smooths.
 
 * `quantile_residuals()` computes probability integral transform (PIT) and
-  randomised quantile residuals for some GAMs and GLMs. Currently only models fitted with a `gaussian()`, `binomial()`, `Gamma()`, or `poisson()` family
+  randomised quantile residuals for some GAMs and GLMs. Currently only models
+  fitted with a `gaussian()`, `binomial()`, `Gamma()`, or `poisson()` family
   are supported.
 
 * `residuals_linpred_plot()` and `residuals_hist_plot()` can now use PIT or

@@ -131,3 +131,16 @@
   }
   !is.null(theta_fun)
 }
+
+`betar_eps` <- function(x) {
+  # x is a family
+  stop_if_not_family(fam)
+  if (!identical(family_type(m_betar), "beta_regression")) {
+    stop("'x' is not a 'betar()' family.")
+  }
+  # get the environment of the qf function
+  e <- environment(fam$qf)
+  # get the stored value of eps from the env of the qf functions
+  eps <- get(".betaEps", envir = e)
+  eps
+}
