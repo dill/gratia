@@ -370,7 +370,8 @@ suppressWarnings(
 )
 
 # adaptive smooth
-utils::data(mcycle, package = "MASS")
+#utils::data(mcycle, package = "MASS")
+mcycle <- MASS::mcycle
 m_accel <- gam(
   list(
     accel ~ s(times, bs = "ad"),
@@ -394,7 +395,8 @@ m_lm <- lm(y ~ x0 + x1 + x2 + x3, data = quick_eg1)
 
 m_glm <- glm(y ~ x0 + x1 + x2 + x3, data = quick_eg1)
 
-utils::data(CO2, package = "datasets")
+#utils::data(CO2, package = "datasets")
+CO2 <- datasets::CO2
 m_ordered_by <- gam(uptake ~ Plant + s(conc, k = 5) +
   s(conc, by = Plant, k = 5), data = CO2, method = "REML")
 
@@ -571,7 +573,8 @@ m_poly <- gam(y ~ fac + ff + log(x0) + x1 + poly(x2, 2, raw = TRUE),
 )
 
 # -- scam models --------------------------------------------------------------
-utils::data(smallAges, package = "gratia")
+# utils::data(smallAges, package = "gratia")
+smallAges <- gratia::smallAges
 smallAges$Error[1] <- 1.1
 sw <- scam(Date ~ s(Depth, k = 5, bs = "mpd"),
   data = smallAges,
