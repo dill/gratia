@@ -81,7 +81,7 @@
 #' * `.fs`: the name of any random factor variable involved in the smooth,
 #' * `.derivative`: the estimated derivative,
 #' * `.se`: the standard error of the estimated derivative,
-#' * `.crit`: the critical value such that `derivative` ± `(crit * se)` gives
+#' * `.crit`: the critical value such that `.derivative` ± `(.crit * .se)` gives
 #'   the upper and lower bounds of the requested confidence or simultaneous
 #'   interval (given `level`),
 #' * `.lower_ci`: the lower bound of the confidence or simultaneous interval,
