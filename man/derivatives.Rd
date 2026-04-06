@@ -96,7 +96,7 @@ A tibble, currently with the following variables:
 \item \code{.fs}: the name of any random factor variable involved in the smooth,
 \item \code{.derivative}: the estimated derivative,
 \item \code{.se}: the standard error of the estimated derivative,
-\item \code{.crit}: the critical value such that \code{derivative} ± \code{(crit * se)} gives
+\item \code{.crit}: the critical value such that \code{.derivative} ± \code{(.crit * .se)} gives
 the upper and lower bounds of the requested confidence or simultaneous
 interval (given \code{level}),
 \item \code{.lower_ci}: the lower bound of the confidence or simultaneous interval,
