@@ -1,6 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://gavinsimpson.github.io/gratia/404.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/CODE_OF_CONDUCT.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/CONTRIBUTING.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/LICENSE-text.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/LICENSE.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/articles/custom-plotting.html</loc></url>
@@ -21,6 +22,8 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/add_residuals.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/add_sizer.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/appraise.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/assemble.gam.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/assemble.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/basis.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/basis_size.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/bird_move.html</loc></url>
@@ -28,6 +31,7 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/check_user_select_smooths.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/coef.scam.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/compare_smooths.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/conditional_values.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/confint.fderiv.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/confint.gam.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/data_combos.html</loc></url>
@@ -40,6 +44,7 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/dispersion.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/draw.basis.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/draw.compare_smooths.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/draw.conditional_values.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/draw.derivatives.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/draw.difference_smooth.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/draw.evaluated_parametric_term.html</loc></url>
@@ -67,12 +72,12 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/fitted_samples.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/fitted_values.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/fix_offset.html</loc></url>
-<url><loc>https://gavinsimpson.github.io/gratia/reference/fixef.gam.html</loc></url>
-<url><loc>https://gavinsimpson.github.io/gratia/reference/fixef.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/fixed_effects.gam.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/gaussian_draws.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/get_by_smooth.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/get_smooth.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/get_smooths_by_id.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/get_vcov.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/gratia-package.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/gss_vocab.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/gw_functions.html</loc></url>
@@ -80,7 +85,9 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/index.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/is_by_smooth.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/is_factor_term.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/is_mgcv_family.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/is_mgcv_smooth.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/is_multivariate_y.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/is_offset.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/link.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/load_mgcv.html</loc></url>
@@ -89,6 +96,7 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/mh_draws.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/model_concurvity.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/model_constant.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/model_terms.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/model_vars.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/n_eta.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/n_smooths.html</loc></url>
@@ -108,6 +116,7 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/posterior_samples.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/predicted_samples.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/qq_plot.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/quantile_residuals.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/ref_level.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/ref_sims.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/reorder_fs_smooth_terms.html</loc></url>
@@ -117,6 +126,8 @@
 <url><loc>https://gavinsimpson.github.io/gratia/reference/residuals_linpred_plot.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/response_derivatives.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/rootogram.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/rtw.html</loc></url>
+<url><loc>https://gavinsimpson.github.io/gratia/reference/scale_fill_partial_effect.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/seq_min_max_eps.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/shift_values.html</loc></url>
 <url><loc>https://gavinsimpson.github.io/gratia/reference/simulate.html</loc></url>
